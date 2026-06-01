@@ -233,23 +233,33 @@ final class VaultViewModel: ObservableObject {
         message: String,
         confirmsPassword: Bool
     ) throws -> String {
-        let passwordField = NSSecureTextField(frame: NSRect(x: 0, y: 0, width: 280, height: 24))
+        let fieldWidth: CGFloat = 320
+        let fieldHeight: CGFloat = 24
+        let passwordField = NSSecureTextField(frame: NSRect(x: 0, y: 0, width: fieldWidth, height: fieldHeight))
         passwordField.placeholderString = "Backup password"
 
-        let stack = NSStackView()
+        let stack = NSStackView(frame: NSRect(x: 0, y: 0, width: fieldWidth, height: confirmsPassword ? 86 : 42))
         stack.orientation = .vertical
-        stack.spacing = 8
+        stack.spacing = 6
         stack.alignment = .leading
+        stack.distribution = .fill
+        stack.addArrangedSubview(NSTextField(labelWithString: "Backup password"))
         stack.addArrangedSubview(passwordField)
 
         let confirmField: NSSecureTextField?
         if confirmsPassword {
-            let field = NSSecureTextField(frame: NSRect(x: 0, y: 0, width: 280, height: 24))
+            let field = NSSecureTextField(frame: NSRect(x: 0, y: 0, width: fieldWidth, height: fieldHeight))
             field.placeholderString = "Confirm password"
+            stack.addArrangedSubview(NSTextField(labelWithString: "Confirm password"))
             stack.addArrangedSubview(field)
             confirmField = field
         } else {
             confirmField = nil
+        }
+
+        [passwordField, confirmField].compactMap { $0 }.forEach { field in
+            field.widthAnchor.constraint(equalToConstant: fieldWidth).isActive = true
+            field.heightAnchor.constraint(equalToConstant: fieldHeight).isActive = true
         }
 
         let alert = NSAlert()
