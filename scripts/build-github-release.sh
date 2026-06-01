@@ -165,6 +165,7 @@ fi
 "$SPARKLE_BIN/generate_appcast" \
   --download-url-prefix "$DOWNLOAD_URL_PREFIX" \
   --link "https://github.com/vsvanshi/vpass" \
+  --maximum-versions 1 \
   -o "$ROOT/docs/appcast.xml" \
   "$APPCAST_DIR"
 

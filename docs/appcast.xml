@@ -6,13 +6,16 @@
         <description>Appcast feed for VPass macOS updates.</description>
         <language>en</language>
         <item>
-            <title>0.0.1</title>
-            <pubDate>Mon, 01 Jun 2026 20:41:11 +0530</pubDate>
+            <title>0.0.2</title>
+            <pubDate>Mon, 01 Jun 2026 22:06:15 +0530</pubDate>
             <link>https://github.com/vsvanshi/vpass</link>
-            <sparkle:version>1</sparkle:version>
-            <sparkle:shortVersionString>0.0.1</sparkle:shortVersionString>
+            <sparkle:version>2</sparkle:version>
+            <sparkle:shortVersionString>0.0.2</sparkle:shortVersionString>
             <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
-            <enclosure url="https://github.com/vsvanshi/vpass/releases/download/v0.0.1/VPass-0.0.1.dmg" length="4575379" type="application/octet-stream" sparkle:edSignature="l+AhRrg2vZ87spNueR8wVMSkpXWf6ZHucGMc6SGKAxKulMNMBGoBBm/8UlBzOWPKR7qXS7ac4oCymKvWGHcHCQ=="/>
+            <enclosure url="https://github.com/vsvanshi/vpass/releases/download/v0.0.2/VPass-0.0.2.dmg" length="4591870" type="application/octet-stream" sparkle:edSignature="h29LTXCQziVWaLEbKq7UTUedJkCx7+5oi0nU4uLph8X1VdaTzuvuaWwCLHa9atDHx2dl2taMGH6nTQxbroI2Dg=="/>
+            <sparkle:deltas>
+                <enclosure url="https://github.com/vsvanshi/vpass/releases/download/v0.0.2/VPass2-1.delta" sparkle:deltaFrom="1" length="102186" type="application/octet-stream" sparkle:deltaFromSparkleExecutableSize="977808" sparkle:deltaFromSparkleLocales="de,he,ar,el,ja,fa,uk" sparkle:edSignature="PKUcxHCTzB6CdOb8tBhvs1pkM+Y9Bz+iZThy5s0MrDv5lF21f+81yXkULpCX7yEnBIMyyjIvDMNiUHEuAG0kAg=="/>
+            </sparkle:deltas>
         </item>
     </channel>
 </rss>
