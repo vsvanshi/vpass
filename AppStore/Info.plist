@@ -16,5 +16,19 @@
 	<string>public.app-category.productivity</string>
 	<key>NSHumanReadableCopyright</key>
 	<string>Copyright © 2026 Varun</string>
+	<key>SUAutomaticallyUpdate</key>
+	<false/>
+	<key>SUEnableAutomaticChecks</key>
+	<true/>
+	<key>SUEnableInstallerLauncherService</key>
+	<true/>
+	<key>SUFeedURL</key>
+	<string>https://vsvanshi.github.io/vpass/appcast.xml</string>
+	<key>SUPublicEDKey</key>
+	<string>u/YrAPaYy88MsClSjQGssqt8DwQUPinZZJeB5OOPI+I=</string>
+	<key>SUScheduledCheckInterval</key>
+	<integer>86400</integer>
+	<key>SUVerifyUpdateBeforeExtraction</key>
+	<true/>
 </dict>
 </plist>

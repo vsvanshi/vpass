@@ -3,6 +3,7 @@ import SwiftUI
 @main
 struct VPassApp: App {
     @StateObject private var viewModel = VaultViewModel(vault: KeychainVault())
+    @StateObject private var updater = AppUpdater()
 
     var body: some Scene {
         WindowGroup {
@@ -15,6 +16,12 @@ struct VPassApp: App {
                     viewModel.startNew()
                 }
                 .keyboardShortcut("n", modifiers: .command)
+            }
+            CommandGroup(after: .appInfo) {
+                Button("Check for Updates...") {
+                    updater.checkForUpdates()
+                }
+                .disabled(!updater.canCheckForUpdates)
             }
         }
 

@@ -1,0 +1,9 @@
+<?xml version="1.0" standalone="yes"?>
+<rss version="2.0" xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle">
+  <channel>
+    <title>VPass Updates</title>
+    <link>https://github.com/vsvanshi/vpass/releases</link>
+    <description>Appcast feed for VPass macOS updates.</description>
+    <language>en</language>
+  </channel>
+</rss>

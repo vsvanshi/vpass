@@ -19,6 +19,8 @@
 		1A0000010000000000000010 /* Sources/VPassApp/ViewModels/VaultViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A0000010000000000000110 /* Sources/VPassApp/ViewModels/VaultViewModel.swift */; };
 		1A0000010000000000000011 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 1A0000010000000000000114 /* Assets.xcassets */; };
 		1A0000010000000000000012 /* Sources/VPassApp/Views/QuickSearchView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A0000010000000000000115 /* Sources/VPassApp/Views/QuickSearchView.swift */; };
+		1A0000010000000000000013 /* Sources/VPassApp/Services/AppUpdater.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A0000010000000000000116 /* Sources/VPassApp/Services/AppUpdater.swift */; };
+		1A0000010000000000000014 /* Sparkle in Frameworks */ = {isa = PBXBuildFile; productRef = 1A0000010000000000000902 /* Sparkle */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -37,6 +39,7 @@
 		1A0000010000000000000113 /* VPass.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = VPass.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		1A0000010000000000000114 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		1A0000010000000000000115 /* Sources/VPassApp/Views/QuickSearchView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/VPassApp/Views/QuickSearchView.swift; sourceTree = "<group>"; };
+		1A0000010000000000000116 /* Sources/VPassApp/Services/AppUpdater.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/VPassApp/Services/AppUpdater.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -44,6 +47,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				1A0000010000000000000014 /* Sparkle in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -74,6 +78,7 @@
 				1A0000010000000000000107 /* Sources/VPassApp/Services/TOTPGenerator.swift */,
 				1A0000010000000000000108 /* Sources/VPassApp/Services/OTPAuthParser.swift */,
 				1A0000010000000000000109 /* Sources/VPassApp/Services/QRCodeScanner.swift */,
+				1A0000010000000000000116 /* Sources/VPassApp/Services/AppUpdater.swift */,
 			);
 			name = Sources;
 			sourceTree = "<group>";
@@ -111,6 +116,9 @@
 			dependencies = (
 			);
 			name = VPass;
+			packageProductDependencies = (
+				1A0000010000000000000902 /* Sparkle */,
+			);
 			productName = VPass;
 			productReference = 1A0000010000000000000113 /* VPass.app */;
 			productType = "com.apple.product-type.application";
@@ -139,6 +147,9 @@
 				Base,
 			);
 			mainGroup = 1A0000010000000000000301;
+			packageReferences = (
+				1A0000010000000000000901 /* XCRemoteSwiftPackageReference "Sparkle" */,
+			);
 			productRefGroup = 1A0000010000000000000304 /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
@@ -175,10 +186,30 @@
 				1A0000010000000000000007 /* Sources/VPassApp/Services/TOTPGenerator.swift in Sources */,
 				1A0000010000000000000008 /* Sources/VPassApp/Services/OTPAuthParser.swift in Sources */,
 				1A0000010000000000000009 /* Sources/VPassApp/Services/QRCodeScanner.swift in Sources */,
+				1A0000010000000000000013 /* Sources/VPassApp/Services/AppUpdater.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		1A0000010000000000000901 /* XCRemoteSwiftPackageReference "Sparkle" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/sparkle-project/Sparkle";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 2.9.2;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		1A0000010000000000000902 /* Sparkle */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 1A0000010000000000000901 /* XCRemoteSwiftPackageReference "Sparkle" */;
+			productName = Sparkle;
+		};
+/* End XCSwiftPackageProductDependency section */
 
 /* Begin XCBuildConfiguration section */
 		1A0000010000000000000801 /* Debug */ = {

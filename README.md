@@ -95,6 +95,42 @@ Recommended public artifact:
 VPass-1.0.0.dmg
 ```
 
+## Auto Updates
+
+VPass is wired for Sparkle-based updates for direct GitHub distribution:
+
+- Sparkle 2.9.2 is included with Swift Package Manager.
+- The app adds a `Check for Updates...` command in the app menu.
+- Automatic update checks are enabled once per day.
+- The appcast feed URL is `https://vsvanshi.github.io/vpass/appcast.xml`.
+- The generated appcast lives at `docs/appcast.xml`, intended for GitHub Pages.
+
+Do not ship Sparkle in a Mac App Store build. App Store releases should be updated through App Store Connect; Sparkle is for the direct-download GitHub build.
+
+To publish an update:
+
+1. Enable GitHub Pages for the repo, serving from the `docs` folder.
+2. Make sure you have a Developer ID Application certificate.
+3. Set notarization credentials in the shell:
+
+```sh
+export APPLE_ID="your-apple-id@example.com"
+export APPLE_TEAM_ID="YOURTEAMID"
+export APPLE_APP_SPECIFIC_PASSWORD="xxxx-xxxx-xxxx-xxxx"
+```
+
+4. Build the release archive and regenerate the appcast:
+
+```sh
+./scripts/build-github-release.sh
+```
+
+5. Commit and push the updated `docs/appcast.xml`.
+6. Create the matching GitHub release tag, for example `v0.1.0`.
+7. Upload the generated `VPass-0.1.0.zip` from `Releases/GitHub/0.1.0/`.
+
+The Sparkle private signing key was generated into the local macOS Keychain. Keep that key secure; the public key is embedded in `AppStore/Info.plist`.
+
 ## Next Hardening Ideas
 
 - Add app unlock with Touch ID or a local master passphrase gate.
@@ -102,4 +138,4 @@ VPass-1.0.0.dmg
 - Add password generation.
 - Add encrypted import/export backups.
 - Add item history or soft delete.
-- Add signed and notarized GitHub release automation.
+- Add a polished DMG layout for direct distribution.
