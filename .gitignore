@@ -1,0 +1,48 @@
+.DS_Store
+
+# Swift Package Manager
+.build/
+.swiftpm/
+
+# Xcode build products and local indexes
+build/
+DerivedData/
+*.hmap
+*.ipa
+*.dSYM
+*.dSYM.zip
+*.xcarchive
+*.xcresult
+
+# Local Xcode user state
+xcuserdata/
+*.xcuserdata/
+*.xcuserdatad/
+*.xcuserstate
+*.moved-aside
+*.xccheckout
+*.xcscmblueprint
+
+# Generated release artifacts
+Releases/
+*.app
+*.dmg
+*.pkg
+*.zip
+
+# Signing, certificates, and local secrets
+*.cer
+*.certSigningRequest
+*.developerprofile
+*.mobileprovision
+*.provisionprofile
+*.p12
+*.pem
+*.key
+*.api_key
+AuthKey_*.p8
+
+# Local environment/config files
+.env
+.env.*
+!.env.example
