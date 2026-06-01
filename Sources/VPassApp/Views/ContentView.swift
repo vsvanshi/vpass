@@ -119,25 +119,34 @@ private struct CredentialListRow: View {
     }
 
     private var updatedText: String {
-        record.updatedAt.formatted(date: .abbreviated, time: .shortened)
+        let calendar = Calendar.current
+        if calendar.isDateInToday(record.updatedAt) {
+            return "Updated \(record.updatedAt.formatted(date: .omitted, time: .shortened))"
+        }
+        if calendar.component(.year, from: record.updatedAt) == calendar.component(.year, from: Date()) {
+            return "Updated \(record.updatedAt.formatted(.dateTime.day().month(.abbreviated)))"
+        }
+        return "Updated \(record.updatedAt.formatted(.dateTime.day().month(.abbreviated).year()))"
     }
 
     var body: some View {
-        HStack(spacing: 12) {
+        HStack(alignment: .top, spacing: 12) {
             ZStack {
                 RoundedRectangle(cornerRadius: 8)
                     .fill(.tint.opacity(0.12))
                 Image(systemName: record.totpSecretBase32.isEmpty ? "key.fill" : "lock.rotation")
-                    .font(.system(size: 17, weight: .semibold))
+                    .font(.system(size: 19, weight: .semibold))
                     .foregroundStyle(.tint)
             }
-            .frame(width: 38, height: 38)
+            .frame(width: 42, height: 42)
 
-            VStack(alignment: .leading, spacing: 7) {
+            VStack(alignment: .leading, spacing: 8) {
                 HStack(spacing: 6) {
                     Text(displayTitle)
                         .font(.headline)
                         .lineLimit(1)
+                        .truncationMode(.tail)
+                        .layoutPriority(1)
 
                     if !record.totpSecretBase32.isEmpty {
                         Image(systemName: "number.circle.fill")
@@ -151,30 +160,33 @@ private struct CredentialListRow: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
+                    .truncationMode(.middle)
 
                 HStack(spacing: 6) {
                     TagPill(text: record.groupName.isEmpty ? "General" : record.groupName, systemImage: "folder")
+                        .frame(maxWidth: 118, alignment: .leading)
 
                     if let expiresAt = record.expiresAt {
                         TagPill(text: expiryText(for: expiresAt), systemImage: "calendar", color: expiryColor(for: expiresAt))
+                            .frame(maxWidth: 128, alignment: .leading)
                     }
+
+                    Spacer(minLength: 6)
+
+                    Text(updatedText)
+                        .font(.caption2)
+                        .foregroundStyle(.tertiary)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.85)
                 }
                 .lineLimit(1)
             }
+            .frame(maxWidth: .infinity, alignment: .leading)
 
-            Spacer(minLength: 8)
-
-            VStack(alignment: .trailing, spacing: 4) {
-                Text("Updated")
-                    .font(.caption2.weight(.medium))
-                    .foregroundStyle(.tertiary)
-                Text(updatedText)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .multilineTextAlignment(.trailing)
-                    .lineLimit(2)
-                    .frame(width: 86, alignment: .trailing)
-            }
+            Image(systemName: "chevron.right")
+                .font(.caption2.weight(.semibold))
+                .foregroundStyle(.tertiary)
+                .padding(.top, 3)
         }
         .padding(.vertical, 8)
     }
@@ -222,6 +234,8 @@ private struct TagPill: View {
         Label(text, systemImage: systemImage)
             .font(.caption2.weight(.medium))
             .foregroundStyle(color)
+            .lineLimit(1)
+            .truncationMode(.tail)
             .padding(.horizontal, 7)
             .padding(.vertical, 3)
             .background(color.opacity(0.10), in: Capsule())
