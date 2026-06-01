@@ -92,7 +92,7 @@ For public distribution outside the Mac App Store, publish a Developer ID signed
 Recommended public artifact:
 
 ```text
-VPass-1.0.0.dmg
+VPass-0.0.1.dmg
 ```
 
 ## Auto Updates
@@ -111,23 +111,21 @@ To publish an update:
 
 1. Enable GitHub Pages for the repo, serving from the `docs` folder.
 2. Make sure you have a Developer ID Application certificate.
-3. Set notarization credentials in the shell:
+3. Store notarization credentials once:
 
 ```sh
-export APPLE_ID="your-apple-id@example.com"
-export APPLE_TEAM_ID="YOURTEAMID"
-export APPLE_APP_SPECIFIC_PASSWORD="xxxx-xxxx-xxxx-xxxx"
+xcrun notarytool store-credentials vpass-notary --apple-id "your-apple-id@example.com" --team-id "X937FCYW2Y"
 ```
 
 4. Build the release archive and regenerate the appcast:
 
 ```sh
-./scripts/build-github-release.sh
+NOTARY_PROFILE=vpass-notary ./scripts/build-github-release.sh
 ```
 
 5. Commit and push the updated `docs/appcast.xml`.
-6. Create the matching GitHub release tag, for example `v0.1.0`.
-7. Upload the generated `VPass-0.1.0.zip` from `Releases/GitHub/0.1.0/`.
+6. Create the matching GitHub release tag, for example `v0.0.1`.
+7. Upload the generated `VPass-0.0.1.dmg` from `Releases/GitHub/0.0.1/`.
 
 The Sparkle private signing key was generated into the local macOS Keychain. Keep that key secure; the public key is embedded in `AppStore/Info.plist`.
 

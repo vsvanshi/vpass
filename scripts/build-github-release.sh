@@ -26,10 +26,11 @@ BUILD_NUMBER="$(
 VERSION="${VERSION:-$MARKETING_VERSION}"
 BUILD="${BUILD:-$BUILD_NUMBER}"
 TAG="${TAG:-v$VERSION}"
-ZIP_NAME="VPass-$VERSION.zip"
+DMG_NAME="VPass-$VERSION.dmg"
 DIST_DIR="$ROOT/Releases/GitHub/$VERSION"
 WORK_APP="$DIST_DIR/VPass.app"
-FINAL_ZIP="$DIST_DIR/$ZIP_NAME"
+DMG_STAGING="$DIST_DIR/dmg-root"
+FINAL_DMG="$DIST_DIR/$DMG_NAME"
 DOWNLOAD_URL_PREFIX="${DOWNLOAD_URL_PREFIX:-https://github.com/vsvanshi/vpass/releases/download/$TAG}"
 SIGNING_IDENTITY="${SIGNING_IDENTITY:-Developer ID Application}"
 
@@ -69,15 +70,56 @@ if [[ -n "${APPLE_ID:-}" && -n "${APPLE_TEAM_ID:-}" && -n "${APPLE_APP_SPECIFIC_
 
   xcrun stapler staple "$WORK_APP"
   xcrun stapler validate "$WORK_APP"
+elif [[ -n "${NOTARY_PROFILE:-}" ]]; then
+  echo "Submitting notarization request with keychain profile $NOTARY_PROFILE"
+  xcrun notarytool submit "$PRE_NOTARY_ZIP" \
+    --keychain-profile "$NOTARY_PROFILE" \
+    --wait
+
+  xcrun stapler staple "$WORK_APP"
+  xcrun stapler validate "$WORK_APP"
 else
-  echo "Skipping notarization because APPLE_ID, APPLE_TEAM_ID, or APPLE_APP_SPECIFIC_PASSWORD is missing."
+  echo "Skipping notarization because NOTARY_PROFILE or APPLE_ID, APPLE_TEAM_ID, and APPLE_APP_SPECIFIC_PASSWORD are missing."
 fi
 
-ditto -c -k --keepParent "$WORK_APP" "$FINAL_ZIP"
-cp "$FINAL_ZIP" "$APPCAST_DIR/$ZIP_NAME"
+rm -rf "$DMG_STAGING" "$FINAL_DMG"
+mkdir -p "$DMG_STAGING"
+ditto "$WORK_APP" "$DMG_STAGING/VPass.app"
+ln -s /Applications "$DMG_STAGING/Applications"
 
-if [[ ! -f "$APPCAST_DIR/$ZIP_NAME.md" ]]; then
-  cat > "$APPCAST_DIR/$ZIP_NAME.md" <<NOTES
+hdiutil create \
+  -volname "VPass $VERSION" \
+  -srcfolder "$DMG_STAGING" \
+  -ov \
+  -format UDZO \
+  -imagekey zlib-level=9 \
+  "$FINAL_DMG"
+
+if [[ -n "${APPLE_ID:-}" && -n "${APPLE_TEAM_ID:-}" && -n "${APPLE_APP_SPECIFIC_PASSWORD:-}" ]]; then
+  echo "Submitting DMG notarization request"
+  xcrun notarytool submit "$FINAL_DMG" \
+    --apple-id "$APPLE_ID" \
+    --team-id "$APPLE_TEAM_ID" \
+    --password "$APPLE_APP_SPECIFIC_PASSWORD" \
+    --wait
+
+  xcrun stapler staple "$FINAL_DMG"
+  xcrun stapler validate "$FINAL_DMG"
+elif [[ -n "${NOTARY_PROFILE:-}" ]]; then
+  echo "Submitting DMG notarization request with keychain profile $NOTARY_PROFILE"
+  xcrun notarytool submit "$FINAL_DMG" \
+    --keychain-profile "$NOTARY_PROFILE" \
+    --wait
+
+  xcrun stapler staple "$FINAL_DMG"
+  xcrun stapler validate "$FINAL_DMG"
+fi
+
+spctl --assess --type open --verbose=4 "$FINAL_DMG" || true
+cp "$FINAL_DMG" "$APPCAST_DIR/$DMG_NAME"
+
+if [[ ! -f "$APPCAST_DIR/$DMG_NAME.md" ]]; then
+  cat > "$APPCAST_DIR/$DMG_NAME.md" <<NOTES
 # VPass $VERSION
 
 - Release notes go here.
@@ -91,10 +133,10 @@ fi
   "$APPCAST_DIR"
 
 echo
-echo "Release archive: $FINAL_ZIP"
+echo "Release DMG: $FINAL_DMG"
 echo "Appcast: $ROOT/docs/appcast.xml"
 echo
 echo "Next steps:"
 echo "1. Commit and push docs/appcast.xml."
 echo "2. Create GitHub release $TAG."
-echo "3. Upload $FINAL_ZIP as the release asset."
+echo "3. Upload $FINAL_DMG as the release asset."
