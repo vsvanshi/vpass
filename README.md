@@ -16,6 +16,7 @@ VPass is a native SwiftUI macOS password manager built for local, personal crede
 - Loose token search in the app and menu bar, so `platform stage` matches `Stage platform core`.
 - Menu bar quick search with compact username, password, and TOTP copy buttons.
 - Copy feedback and button animation for username, password, and TOTP actions.
+- Encrypted `.vpassbackup` export/import for recovery.
 - Confirm before deleting a credential.
 - Remembers the last selected tag across app launches.
 
@@ -26,7 +27,20 @@ VPass is a native SwiftUI macOS password manager built for local, personal crede
 - Only a local credential UUID index is stored in user defaults.
 - VPass does not sync secrets and does not send vault data over the network.
 - Screen Recording permission is used only for the user-triggered QR scan rectangle flow.
+- Backup files are encrypted with AES-GCM using a password-derived key and random salt.
 - Clipboard copy is explicit. Copied values are not currently auto-cleared.
+
+## Encrypted Backups
+
+Use `File > Export Encrypted Backup...` to save a recovery file:
+
+```text
+VPass-Backup-YYYY-MM-DD.vpassbackup
+```
+
+The backup includes credentials, notes, extra fields, and TOTP secrets. Store it somewhere durable, such as iCloud Drive or an external drive. VPass cannot recover this file if you forget the backup password.
+
+Use `File > Import Encrypted Backup...` to restore. Import adds missing credentials and updates credentials that have the same internal ID.
 
 ## Run Locally
 

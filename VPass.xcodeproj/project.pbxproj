@@ -21,6 +21,7 @@
 		1A0000010000000000000012 /* Sources/VPassApp/Views/QuickSearchView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A0000010000000000000115 /* Sources/VPassApp/Views/QuickSearchView.swift */; };
 		1A0000010000000000000013 /* Sources/VPassApp/Services/AppUpdater.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A0000010000000000000116 /* Sources/VPassApp/Services/AppUpdater.swift */; };
 		1A0000010000000000000014 /* Sparkle in Frameworks */ = {isa = PBXBuildFile; productRef = 1A0000010000000000000902 /* Sparkle */; };
+		1A0000010000000000000015 /* Sources/VPassApp/Services/BackupService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A0000010000000000000117 /* Sources/VPassApp/Services/BackupService.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -40,6 +41,7 @@
 		1A0000010000000000000114 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		1A0000010000000000000115 /* Sources/VPassApp/Views/QuickSearchView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/VPassApp/Views/QuickSearchView.swift; sourceTree = "<group>"; };
 		1A0000010000000000000116 /* Sources/VPassApp/Services/AppUpdater.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/VPassApp/Services/AppUpdater.swift; sourceTree = "<group>"; };
+		1A0000010000000000000117 /* Sources/VPassApp/Services/BackupService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/VPassApp/Services/BackupService.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -79,6 +81,7 @@
 				1A0000010000000000000108 /* Sources/VPassApp/Services/OTPAuthParser.swift */,
 				1A0000010000000000000109 /* Sources/VPassApp/Services/QRCodeScanner.swift */,
 				1A0000010000000000000116 /* Sources/VPassApp/Services/AppUpdater.swift */,
+				1A0000010000000000000117 /* Sources/VPassApp/Services/BackupService.swift */,
 			);
 			name = Sources;
 			sourceTree = "<group>";
@@ -187,6 +190,7 @@
 				1A0000010000000000000008 /* Sources/VPassApp/Services/OTPAuthParser.swift in Sources */,
 				1A0000010000000000000009 /* Sources/VPassApp/Services/QRCodeScanner.swift in Sources */,
 				1A0000010000000000000013 /* Sources/VPassApp/Services/AppUpdater.swift in Sources */,
+				1A0000010000000000000015 /* Sources/VPassApp/Services/BackupService.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

@@ -17,6 +17,17 @@ struct VPassApp: App {
                 }
                 .keyboardShortcut("n", modifiers: .command)
             }
+            CommandGroup(after: .newItem) {
+                Button("Export Encrypted Backup...") {
+                    viewModel.exportEncryptedBackup()
+                }
+                .keyboardShortcut("e", modifiers: [.command, .shift])
+
+                Button("Import Encrypted Backup...") {
+                    viewModel.importEncryptedBackup()
+                }
+                .keyboardShortcut("i", modifiers: [.command, .shift])
+            }
             CommandGroup(after: .appInfo) {
                 Button("Check for Updates...") {
                     updater.checkForUpdates()
