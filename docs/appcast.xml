@@ -1,9 +1,18 @@
 <?xml version="1.0" standalone="yes"?>
-<rss version="2.0" xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle">
-  <channel>
-    <title>VPass Updates</title>
-    <link>https://github.com/vsvanshi/vpass/releases</link>
-    <description>Appcast feed for VPass macOS updates.</description>
-    <language>en</language>
-  </channel>
+<rss xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle" version="2.0">
+    <channel>
+        <title>VPass Updates</title>
+        <link>https://github.com/vsvanshi/vpass/releases</link>
+        <description>Appcast feed for VPass macOS updates.</description>
+        <language>en</language>
+        <item>
+            <title>0.0.1</title>
+            <pubDate>Mon, 01 Jun 2026 20:41:11 +0530</pubDate>
+            <link>https://github.com/vsvanshi/vpass</link>
+            <sparkle:version>1</sparkle:version>
+            <sparkle:shortVersionString>0.0.1</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+            <enclosure url="https://github.com/vsvanshi/vpass/releases/download/v0.0.1/VPass-0.0.1.dmg" length="4575379" type="application/octet-stream" sparkle:edSignature="l+AhRrg2vZ87spNueR8wVMSkpXWf6ZHucGMc6SGKAxKulMNMBGoBBm/8UlBzOWPKR7qXS7ac4oCymKvWGHcHCQ=="/>
+        </item>
+    </channel>
 </rss>

@@ -31,8 +31,9 @@ DIST_DIR="$ROOT/Releases/GitHub/$VERSION"
 WORK_APP="$DIST_DIR/VPass.app"
 DMG_STAGING="$DIST_DIR/dmg-root"
 FINAL_DMG="$DIST_DIR/$DMG_NAME"
-DOWNLOAD_URL_PREFIX="${DOWNLOAD_URL_PREFIX:-https://github.com/vsvanshi/vpass/releases/download/$TAG}"
+DOWNLOAD_URL_PREFIX="${DOWNLOAD_URL_PREFIX:-https://github.com/vsvanshi/vpass/releases/download/$TAG/}"
 SIGNING_IDENTITY="${SIGNING_IDENTITY:-Developer ID Application}"
+PROCESSED_ENTITLEMENTS="$DIST_DIR/VPass.entitlements"
 
 echo "Building VPass $VERSION ($BUILD)"
 rm -rf "$DIST_DIR"
@@ -44,7 +45,7 @@ xcodebuild \
   -configuration "$CONFIGURATION" \
   -destination 'platform=macOS' \
   build \
-  CODE_SIGN_IDENTITY="$SIGNING_IDENTITY" \
+  CODE_SIGNING_ALLOWED=NO \
   CURRENT_PROJECT_VERSION="$BUILD" \
   MARKETING_VERSION="$VERSION"
 
@@ -55,6 +56,35 @@ BUILT_PRODUCTS_DIR="$(
 BUILT_APP="$BUILT_PRODUCTS_DIR/VPass.app"
 
 ditto "$BUILT_APP" "$WORK_APP"
+sed "s/\$(PRODUCT_BUNDLE_IDENTIFIER)/com.varunsuryawanshi.vpass/g" "$ROOT/AppStore/VPass.entitlements" > "$PROCESSED_ENTITLEMENTS"
+
+if [[ -d "$WORK_APP/Contents/Frameworks/Sparkle.framework" ]]; then
+  SPARKLE_FRAMEWORK="$WORK_APP/Contents/Frameworks/Sparkle.framework"
+  for item in \
+    "$SPARKLE_FRAMEWORK/Versions/Current/Autoupdate" \
+    "$SPARKLE_FRAMEWORK/Versions/Current/Updater.app" \
+    "$SPARKLE_FRAMEWORK/Versions/Current/XPCServices/Downloader.xpc" \
+    "$SPARKLE_FRAMEWORK/Versions/Current/XPCServices/Installer.xpc" \
+    "$SPARKLE_FRAMEWORK/Versions/Current"; do
+    if [[ -e "$item" ]]; then
+      codesign \
+        --force \
+        --timestamp \
+        --options runtime \
+        --preserve-metadata=identifier,entitlements,flags \
+        --sign "$SIGNING_IDENTITY" \
+        "$item"
+    fi
+  done
+fi
+
+codesign \
+  --force \
+  --timestamp \
+  --options runtime \
+  --entitlements "$PROCESSED_ENTITLEMENTS" \
+  --sign "$SIGNING_IDENTITY" \
+  "$WORK_APP"
 codesign --verify --deep --strict --verbose=2 "$WORK_APP"
 
 PRE_NOTARY_ZIP="$DIST_DIR/VPass-$VERSION-notary.zip"
@@ -93,6 +123,12 @@ hdiutil create \
   -ov \
   -format UDZO \
   -imagekey zlib-level=9 \
+  "$FINAL_DMG"
+
+codesign \
+  --force \
+  --timestamp \
+  --sign "$SIGNING_IDENTITY" \
   "$FINAL_DMG"
 
 if [[ -n "${APPLE_ID:-}" && -n "${APPLE_TEAM_ID:-}" && -n "${APPLE_APP_SPECIFIC_PASSWORD:-}" ]]; then
