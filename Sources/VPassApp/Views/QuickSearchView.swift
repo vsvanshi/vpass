@@ -2,6 +2,7 @@ import SwiftUI
 
 struct QuickSearchView: View {
     @EnvironmentObject private var viewModel: VaultViewModel
+    @EnvironmentObject private var authenticator: AppAuthenticator
     @State private var query = ""
     @State private var copiedMessage: String?
     @State private var copiedFeedbackID = UUID()
@@ -22,6 +23,33 @@ struct QuickSearchView: View {
     }
 
     var body: some View {
+        Group {
+            if authenticator.isUnlocked {
+                unlockedContent
+            } else {
+                QuickUnlockView()
+                    .environmentObject(authenticator)
+            }
+        }
+        .alert("Unlock Failed", isPresented: Binding(
+            get: { authenticator.errorMessage != nil },
+            set: { if !$0 { authenticator.errorMessage = nil } }
+        )) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(authenticator.errorMessage ?? "")
+        }
+        .onChange(of: authenticator.isUnlocked) { _, isUnlocked in
+            if isUnlocked {
+                viewModel.reload()
+            }
+        }
+        .onAppear {
+            authenticator.unlockIfRecentlyAuthenticated()
+        }
+    }
+
+    private var unlockedContent: some View {
         VStack(spacing: 0) {
             HStack(spacing: 8) {
                 Image(systemName: "magnifyingglass")
@@ -88,6 +116,39 @@ struct QuickSearchView: View {
                 copiedMessage = nil
             }
         }
+    }
+}
+
+private struct QuickUnlockView: View {
+    @EnvironmentObject private var authenticator: AppAuthenticator
+
+    var body: some View {
+        VStack(spacing: 16) {
+            Image(systemName: "lock.shield.fill")
+                .font(.system(size: 34, weight: .semibold))
+                .foregroundStyle(.blue)
+                .frame(width: 62, height: 62)
+                .background(Color.blue.opacity(0.12), in: RoundedRectangle(cornerRadius: 14))
+
+            VStack(spacing: 4) {
+                Text("VPass is Locked")
+                    .font(.headline)
+                Text("Unlock before searching or copying secrets.")
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+            }
+
+            Button {
+                authenticator.authenticate()
+            } label: {
+                Label(authenticator.isAuthenticating ? "Unlocking..." : "Unlock", systemImage: "touchid")
+                    .frame(minWidth: 120)
+            }
+            .buttonStyle(.borderedProminent)
+            .disabled(authenticator.isAuthenticating)
+        }
+        .padding(24)
+        .frame(width: 420, height: 260)
     }
 }
 

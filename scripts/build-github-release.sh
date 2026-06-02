@@ -33,6 +33,7 @@ DMG_STAGING="$DIST_DIR/dmg-root"
 FINAL_DMG="$DIST_DIR/$DMG_NAME"
 DOWNLOAD_URL_PREFIX="${DOWNLOAD_URL_PREFIX:-https://github.com/vsvanshi/vpass/releases/download/$TAG/}"
 SIGNING_IDENTITY="${SIGNING_IDENTITY:-Developer ID Application}"
+APP_IDENTIFIER_PREFIX="${APP_IDENTIFIER_PREFIX:-X937FCYW2Y.}"
 PROCESSED_ENTITLEMENTS="$DIST_DIR/VPass.entitlements"
 
 echo "Building VPass $VERSION ($BUILD)"
@@ -56,7 +57,10 @@ BUILT_PRODUCTS_DIR="$(
 BUILT_APP="$BUILT_PRODUCTS_DIR/VPass.app"
 
 ditto "$BUILT_APP" "$WORK_APP"
-sed "s/\$(PRODUCT_BUNDLE_IDENTIFIER)/com.varunsuryawanshi.vpass/g" "$ROOT/AppStore/VPass.entitlements" > "$PROCESSED_ENTITLEMENTS"
+sed \
+  -e "s/\$(PRODUCT_BUNDLE_IDENTIFIER)/com.varunsuryawanshi.vpass/g" \
+  -e "s/\$(AppIdentifierPrefix)/$APP_IDENTIFIER_PREFIX/g" \
+  "$ROOT/AppStore/VPass.entitlements" > "$PROCESSED_ENTITLEMENTS"
 
 if [[ -d "$WORK_APP/Contents/Frameworks/Sparkle.framework" ]]; then
   SPARKLE_FRAMEWORK="$WORK_APP/Contents/Frameworks/Sparkle.framework"

@@ -2,15 +2,23 @@ import SwiftUI
 
 struct ContentView: View {
     @EnvironmentObject private var viewModel: VaultViewModel
+    @EnvironmentObject private var authenticator: AppAuthenticator
+    @AppStorage("layout.passwordListColumnWidth") private var passwordListColumnWidth = 360.0
+    @AppStorage("layout.sidebarColumnWidth") private var sidebarColumnWidth = 220.0
     @State private var showingSettings = false
 
     var body: some View {
-        NavigationSplitView {
-            tagSidebar
-        } content: {
-            passwordList
-        } detail: {
-            detailPane
+        // Keep the split view alive while locked (overlay instead of swapping
+        // it out): destroying it is what loses the user's column widths, and
+        // SwiftUI offers no API to persist them across recreation.
+        ZStack {
+            unlockedContent
+                .disabled(!authenticator.isUnlocked)
+
+            if !authenticator.isUnlocked {
+                LockedVaultView()
+                    .environmentObject(authenticator)
+            }
         }
         .frame(minWidth: 1040, minHeight: 640)
         .alert("VPass", isPresented: Binding(
@@ -21,11 +29,33 @@ struct ContentView: View {
         } message: {
             Text(viewModel.errorMessage ?? "")
         }
+        .alert("Unlock Failed", isPresented: Binding(
+            get: { authenticator.errorMessage != nil },
+            set: { if !$0 { authenticator.errorMessage = nil } }
+        )) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(authenticator.errorMessage ?? "")
+        }
         .sheet(isPresented: $showingSettings) {
             SettingsView()
                 .environmentObject(viewModel)
-                .frame(width: 520, height: 430)
+                .frame(width: 540, height: 620)
         }
+        .onAppear {
+            authenticator.unlockIfRecentlyAuthenticated()
+        }
+    }
+
+    private var unlockedContent: some View {
+        NavigationSplitView {
+            tagSidebar
+        } content: {
+            passwordList
+        } detail: {
+            detailPane
+        }
+        .toolbar(authenticator.isUnlocked ? .visible : .hidden, for: .windowToolbar)
     }
 
     @ViewBuilder
@@ -40,7 +70,12 @@ struct ContentView: View {
         } else {
             DetailView(record: viewModel.selectedRecord)
                 .environmentObject(viewModel)
+                .navigationSplitViewColumnWidth(min: 420, ideal: 720)
         }
+    }
+
+    private var sidebarIdealWidth: CGFloat {
+        CGFloat(min(max(sidebarColumnWidth, 180), 260))
     }
 
     private var tagSidebar: some View {
@@ -59,7 +94,9 @@ struct ContentView: View {
             }
         }
         .navigationTitle("VPass")
-        .frame(minWidth: 180)
+        .frame(minWidth: 180, idealWidth: sidebarIdealWidth, maxWidth: 260)
+        .navigationSplitViewColumnWidth(min: 180, ideal: sidebarIdealWidth, max: 260)
+        .background(ColumnWidthReporter(range: 180...260, storedWidth: $sidebarColumnWidth))
         .onChange(of: viewModel.selectedTag) { _, newValue in
             if let tag = VaultTag.all.first(where: { $0.name == newValue }) {
                 viewModel.selectTag(tag)
@@ -104,6 +141,12 @@ struct ContentView: View {
             }
         }
         .navigationTitle(viewModel.selectedTag)
+        .navigationSplitViewColumnWidth(
+            min: 280,
+            ideal: CGFloat(min(max(passwordListColumnWidth, 280), 760)),
+            max: 760
+        )
+        .background(ColumnWidthReporter(range: 280...760, storedWidth: $passwordListColumnWidth))
         .searchable(text: $viewModel.searchText, placement: .toolbar)
         .toolbar {
             ToolbarItem {
@@ -135,6 +178,61 @@ struct ContentView: View {
             }
         }
     }
+
+}
+
+/// Persists a navigation column's live width so it can be fed back as the
+/// column's `ideal` width on the next app launch. Within a session the
+/// columns keep their size because the split view is never torn down.
+private struct ColumnWidthReporter: View {
+    let range: ClosedRange<Double>
+    @Binding var storedWidth: Double
+
+    var body: some View {
+        GeometryReader { proxy in
+            Color.clear
+                .onChange(of: proxy.size.width) { _, newValue in
+                    let width = Double(newValue.rounded())
+                    guard range.contains(width), abs(storedWidth - width) >= 1 else {
+                        return
+                    }
+                    storedWidth = width
+                }
+        }
+    }
+}
+
+private struct LockedVaultView: View {
+    @EnvironmentObject private var authenticator: AppAuthenticator
+
+    var body: some View {
+        VStack(spacing: 18) {
+            Image(systemName: "lock.shield.fill")
+                .font(.system(size: 48, weight: .semibold))
+                .foregroundStyle(.blue)
+                .frame(width: 82, height: 82)
+                .background(Color.blue.opacity(0.12), in: RoundedRectangle(cornerRadius: 18))
+
+            VStack(spacing: 6) {
+                Text("VPass is Locked")
+                    .font(.title2.weight(.semibold))
+                Text("Use Touch ID or your Mac password to unlock your vault.")
+                    .foregroundStyle(.secondary)
+            }
+
+            Button {
+                authenticator.authenticate()
+            } label: {
+                Label(authenticator.isAuthenticating ? "Unlocking..." : "Unlock VPass", systemImage: "touchid")
+                    .frame(minWidth: 180)
+            }
+            .buttonStyle(.borderedProminent)
+            .controlSize(.large)
+            .disabled(authenticator.isAuthenticating)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(.background)
+    }
 }
 
 private struct SettingsView: View {
@@ -159,73 +257,12 @@ private struct SettingsView: View {
                 .help("Close")
             }
 
-            VStack(alignment: .leading, spacing: 12) {
-                Label("Recovery", systemImage: "externaldrive.badge.shield.checkmark")
-                    .font(.headline)
-
-                SettingsInfoRow(
-                    title: "Backup password",
-                    value: viewModel.isAutomaticBackupConfigured ? "Saved in Keychain" : "Not set"
-                )
-                SettingsInfoRow(title: "Latest backup", value: viewModel.backupHealth.latestBackupText)
-                SettingsInfoRow(title: "Previous backup", value: viewModel.backupHealth.previousBackupText)
-                SettingsInfoRow(title: "Pending changes", value: pendingChangesText)
-
-                VStack(alignment: .leading, spacing: 10) {
-                    HStack(spacing: 10) {
-                        Button {
-                            viewModel.backUpNow()
-                        } label: {
-                            Label("Back Up Now", systemImage: "externaldrive.badge.plus")
-                        }
-                        .disabled(viewModel.isAutomaticBackupRunning)
-
-                        Button {
-                            viewModel.exportEncryptedBackup()
-                        } label: {
-                            Label("Export File", systemImage: "square.and.arrow.up")
-                        }
-                    }
-
-                    HStack(spacing: 10) {
-                        Button {
-                            viewModel.restoreCurrentBackup()
-                        } label: {
-                            Label("Restore Latest", systemImage: "arrow.down.doc")
-                        }
-                        .disabled(!viewModel.backupHealth.hasCurrentBackup)
-
-                        Button {
-                            viewModel.restorePreviousBackup()
-                        } label: {
-                            Label("Restore Previous", systemImage: "clock.arrow.circlepath")
-                        }
-                        .disabled(!viewModel.backupHealth.hasPreviousBackup)
-                    }
-                }
-
-                Divider()
-
-                HStack(spacing: 10) {
-                    Button {
-                        viewModel.setUpAutomaticBackup()
-                    } label: {
-                        Label(
-                            viewModel.isAutomaticBackupConfigured ? "Change Backup Password" : "Set Up Backup",
-                            systemImage: "key"
-                        )
-                    }
-
-                    Button(role: .destructive) {
-                        viewModel.disableAutomaticBackup()
-                    } label: {
-                        Label("Disable Backup", systemImage: "trash")
-                    }
-                    .disabled(!viewModel.isAutomaticBackupConfigured)
+            ScrollView {
+                VStack(alignment: .leading, spacing: 14) {
+                    recoverySection
+                    totpSyncSection
                 }
             }
-            .padding(16)
-            .background(.quaternary.opacity(0.35), in: RoundedRectangle(cornerRadius: 8))
 
             Text("Restore adds missing credentials and updates matching credentials. It does not delete other current credentials.")
                 .font(.caption)
@@ -234,6 +271,95 @@ private struct SettingsView: View {
             Spacer()
         }
         .padding(22)
+    }
+
+    private var recoverySection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Label("Recovery", systemImage: "externaldrive.badge.shield.checkmark")
+                .font(.headline)
+
+            SettingsInfoRow(
+                title: "Backup password",
+                value: viewModel.isAutomaticBackupConfigured ? "Saved in Keychain" : "Not set"
+            )
+            SettingsInfoRow(title: "Latest backup", value: viewModel.backupHealth.latestBackupText)
+            SettingsInfoRow(title: "Previous backup", value: viewModel.backupHealth.previousBackupText)
+            SettingsInfoRow(title: "Pending changes", value: pendingChangesText)
+
+            VStack(alignment: .leading, spacing: 10) {
+                HStack(spacing: 10) {
+                    Button {
+                        viewModel.backUpNow()
+                    } label: {
+                        Label("Back Up Now", systemImage: "externaldrive.badge.plus")
+                    }
+                    .disabled(viewModel.isAutomaticBackupRunning)
+
+                    Button {
+                        viewModel.exportEncryptedBackup()
+                    } label: {
+                        Label("Export File", systemImage: "square.and.arrow.up")
+                    }
+                }
+
+                HStack(spacing: 10) {
+                    Button {
+                        viewModel.restoreCurrentBackup()
+                    } label: {
+                        Label("Restore Latest", systemImage: "arrow.down.doc")
+                    }
+                    .disabled(!viewModel.backupHealth.hasCurrentBackup)
+
+                    Button {
+                        viewModel.restorePreviousBackup()
+                    } label: {
+                        Label("Restore Previous", systemImage: "clock.arrow.circlepath")
+                    }
+                    .disabled(!viewModel.backupHealth.hasPreviousBackup)
+                }
+            }
+
+            Divider()
+
+            HStack(spacing: 10) {
+                Button {
+                    viewModel.setUpAutomaticBackup()
+                } label: {
+                    Label(
+                        viewModel.isAutomaticBackupConfigured ? "Change Backup Password" : "Set Up Backup",
+                        systemImage: "key"
+                    )
+                }
+
+                Button(role: .destructive) {
+                    viewModel.disableAutomaticBackup()
+                } label: {
+                    Label("Disable Backup", systemImage: "trash")
+                }
+                .disabled(!viewModel.isAutomaticBackupConfigured)
+            }
+        }
+        .padding(16)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(.quaternary.opacity(0.35), in: RoundedRectangle(cornerRadius: 8))
+    }
+
+    private var totpSyncSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Label("iCloud Vault Sync", systemImage: "icloud")
+                .font(.headline)
+
+            SettingsInfoRow(title: "Status", value: "Automatic")
+            SettingsInfoRow(title: "Credentials", value: "\(viewModel.records.count)")
+            SettingsInfoRow(title: "Authenticators", value: "\(viewModel.totpSyncCredentialCount)")
+
+            Text("Credentials and authenticator secrets are stored in your shared iCloud Keychain access group for VPass on Mac and iPhone.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
+        .padding(16)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(.quaternary.opacity(0.35), in: RoundedRectangle(cornerRadius: 8))
     }
 
     private var pendingChangesText: String {

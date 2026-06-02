@@ -25,22 +25,32 @@ enum VaultError: LocalizedError {
 }
 
 final class KeychainVault {
-    private let service = "com.varun.vpass.vault"
-    private let indexKey = "com.varun.vpass.vault.index"
+    private let service = "com.varunsuryawanshi.vpass.shared-vault"
+    private let deletionService = "com.varunsuryawanshi.vpass.shared-vault.deleted"
+    private let legacyService = "com.varun.vpass.vault"
+    private let legacyIndexKey = "com.varun.vpass.vault.index"
+    private let migrationKey = "com.varunsuryawanshi.vpass.shared-vault.migrated"
     private let userDefaults: UserDefaults
     private let encoder = JSONEncoder()
     private let decoder = JSONDecoder()
+    private let accessGroup: String?
+    private let synchronizesWithiCloud: Bool
 
-    init(userDefaults: UserDefaults = .standard) {
+    init(
+        userDefaults: UserDefaults = .standard,
+        accessGroup: String? = KeychainVault.defaultAccessGroup(),
+        synchronizesWithiCloud: Bool = true
+    ) {
         self.userDefaults = userDefaults
+        self.accessGroup = accessGroup
+        self.synchronizesWithiCloud = synchronizesWithiCloud
         encoder.dateEncodingStrategy = .iso8601
         decoder.dateDecodingStrategy = .iso8601
     }
 
     func loadRecords() throws -> [CredentialRecord] {
-        try loadIDs().compactMap { id in
-            try? loadRecord(id: id)
-        }.sorted { lhs, rhs in
+        try migrateLegacyRecordsIfNeeded()
+        return try loadSharedRecords().sorted { lhs, rhs in
             lhs.title.localizedCaseInsensitiveCompare(rhs.title) == .orderedAscending
         }
     }
@@ -50,39 +60,276 @@ final class KeychainVault {
             throw VaultError.encodingFailed
         }
 
-        var query = baseQuery(account: record.id.uuidString)
+        var query = sharedItemQuery(account: record.id.uuidString, synchronizable: kSecAttrSynchronizableAny)
         let attributes: [String: Any] = [
             kSecValueData as String: data,
-            kSecAttrAccessible as String: kSecAttrAccessibleWhenUnlockedThisDeviceOnly
+            kSecAttrAccessible as String: kSecAttrAccessibleWhenUnlocked
         ]
+        var writeAttributes = attributes
+        if synchronizesWithiCloud {
+            writeAttributes[kSecAttrSynchronizable as String] = true
+        }
 
-        let updateStatus = SecItemUpdate(query as CFDictionary, attributes as CFDictionary)
+        let updateStatus = SecItemUpdate(query as CFDictionary, writeAttributes as CFDictionary)
         if updateStatus == errSecItemNotFound {
-            attributes.forEach { query[$0.key] = $0.value }
+            query = sharedItemQuery(account: record.id.uuidString, synchronizable: synchronizesWithiCloud ? true : nil)
+            writeAttributes.forEach { query[$0.key] = $0.value }
             let addStatus = SecItemAdd(query as CFDictionary, nil)
             guard addStatus == errSecSuccess else {
                 throw VaultError.keychain(addStatus)
             }
-            appendID(record.id)
+            try deleteDeletionMarker(id: record.id)
             return
         }
 
         guard updateStatus == errSecSuccess else {
             throw VaultError.keychain(updateStatus)
         }
-        appendID(record.id)
+
+        try deleteDeletionMarker(id: record.id)
     }
 
     func delete(id: UUID) throws {
-        let status = SecItemDelete(baseQuery(account: id.uuidString) as CFDictionary)
+        try saveDeletionMarker(id: id, deletedAt: Date())
+        let status = SecItemDelete(sharedItemQuery(account: id.uuidString, synchronizable: kSecAttrSynchronizableAny) as CFDictionary)
         guard status == errSecSuccess || status == errSecItemNotFound else {
             throw VaultError.keychain(status)
         }
-        removeID(id)
     }
 
-    private func loadRecord(id: UUID) throws -> CredentialRecord {
-        var query = baseQuery(account: id.uuidString)
+    private func loadSharedRecords() throws -> [CredentialRecord] {
+        let deletionMarkers = try loadDeletionMarkers()
+        let records = try loadSharedAccounts().compactMap { account in
+            try? loadSharedRecord(account: account)
+        }
+        return records.filter { record in
+            guard let deletedAt = deletionMarkers[record.id.uuidString] else {
+                return true
+            }
+            if deletedAt >= record.updatedAt {
+                try? deleteRecordItem(id: record.id)
+                return false
+            }
+            return true
+        }
+    }
+
+    private func loadSharedAccounts() throws -> [String] {
+        var query = sharedBaseQuery()
+        query[kSecReturnAttributes as String] = true
+        query[kSecMatchLimit as String] = kSecMatchLimitAll
+        if synchronizesWithiCloud {
+            query[kSecAttrSynchronizable as String] = kSecAttrSynchronizableAny
+        }
+
+        var result: CFTypeRef?
+        let status = SecItemCopyMatching(query as CFDictionary, &result)
+        if status == errSecItemNotFound {
+            return []
+        }
+        guard status == errSecSuccess else {
+            throw VaultError.keychain(status)
+        }
+
+        if let item = result as? [String: Any],
+           let account = item[kSecAttrAccount as String] as? String {
+            return [account]
+        }
+
+        let items = result as? [[String: Any]] ?? []
+        return items.compactMap { $0[kSecAttrAccount as String] as? String }
+    }
+
+    private func loadSharedRecord(account: String) throws -> CredentialRecord {
+        var query = sharedItemQuery(account: account, synchronizable: kSecAttrSynchronizableAny)
+        query[kSecReturnData as String] = true
+        query[kSecMatchLimit as String] = kSecMatchLimitOne
+
+        var result: CFTypeRef?
+        let status = SecItemCopyMatching(query as CFDictionary, &result)
+        guard status != errSecItemNotFound else {
+            throw VaultError.missingRecord
+        }
+        guard status == errSecSuccess else {
+            throw VaultError.keychain(status)
+        }
+
+        guard let data = result as? Data, let record = try? decoder.decode(CredentialRecord.self, from: data) else {
+            throw VaultError.decodingFailed
+        }
+        return record
+    }
+
+    private func sharedItemQuery(account: String, synchronizable: Any?) -> [String: Any] {
+        var query = sharedBaseQuery()
+        query[kSecAttrAccount as String] = account
+        if synchronizesWithiCloud, let synchronizable {
+            query[kSecAttrSynchronizable as String] = synchronizable
+        }
+        return query
+    }
+
+    private func deletionItemQuery(account: String, synchronizable: Any?) -> [String: Any] {
+        var query = deletionBaseQuery()
+        query[kSecAttrAccount as String] = account
+        if synchronizesWithiCloud, let synchronizable {
+            query[kSecAttrSynchronizable as String] = synchronizable
+        }
+        return query
+    }
+
+    private func sharedBaseQuery() -> [String: Any] {
+        baseQuery(service: service)
+    }
+
+    private func deletionBaseQuery() -> [String: Any] {
+        baseQuery(service: deletionService)
+    }
+
+    private func baseQuery(service: String) -> [String: Any] {
+        var query: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: service
+        ]
+        if synchronizesWithiCloud, let accessGroup {
+            query[kSecAttrAccessGroup as String] = accessGroup
+        }
+        return query
+    }
+
+    private func deleteRecordItem(id: UUID) throws {
+        let status = SecItemDelete(sharedItemQuery(account: id.uuidString, synchronizable: kSecAttrSynchronizableAny) as CFDictionary)
+        guard status == errSecSuccess || status == errSecItemNotFound else {
+            throw VaultError.keychain(status)
+        }
+    }
+
+    private func saveDeletionMarker(id: UUID, deletedAt: Date) throws {
+        guard let data = try? encoder.encode(DeletionMarker(deletedAt: deletedAt)) else {
+            throw VaultError.encodingFailed
+        }
+
+        var query = deletionItemQuery(account: id.uuidString, synchronizable: kSecAttrSynchronizableAny)
+        let attributes: [String: Any] = [
+            kSecValueData as String: data,
+            kSecAttrAccessible as String: kSecAttrAccessibleWhenUnlocked
+        ]
+        var writeAttributes = attributes
+        if synchronizesWithiCloud {
+            writeAttributes[kSecAttrSynchronizable as String] = true
+        }
+
+        let updateStatus = SecItemUpdate(query as CFDictionary, writeAttributes as CFDictionary)
+        if updateStatus == errSecItemNotFound {
+            query = deletionItemQuery(account: id.uuidString, synchronizable: synchronizesWithiCloud ? true : nil)
+            writeAttributes.forEach { query[$0.key] = $0.value }
+            let addStatus = SecItemAdd(query as CFDictionary, nil)
+            guard addStatus == errSecSuccess else {
+                throw VaultError.keychain(addStatus)
+            }
+            return
+        }
+
+        guard updateStatus == errSecSuccess else {
+            throw VaultError.keychain(updateStatus)
+        }
+    }
+
+    private func deleteDeletionMarker(id: UUID) throws {
+        let status = SecItemDelete(deletionItemQuery(account: id.uuidString, synchronizable: kSecAttrSynchronizableAny) as CFDictionary)
+        guard status == errSecSuccess || status == errSecItemNotFound else {
+            throw VaultError.keychain(status)
+        }
+    }
+
+    private func loadDeletionMarkers() throws -> [String: Date] {
+        var query = deletionBaseQuery()
+        query[kSecReturnAttributes as String] = true
+        query[kSecMatchLimit as String] = kSecMatchLimitAll
+        if synchronizesWithiCloud {
+            query[kSecAttrSynchronizable as String] = kSecAttrSynchronizableAny
+        }
+
+        var result: CFTypeRef?
+        let status = SecItemCopyMatching(query as CFDictionary, &result)
+        if status == errSecItemNotFound {
+            return [:]
+        }
+        guard status == errSecSuccess else {
+            throw VaultError.keychain(status)
+        }
+
+        let items: [[String: Any]]
+        if let item = result as? [String: Any] {
+            items = [item]
+        } else {
+            items = result as? [[String: Any]] ?? []
+        }
+
+        return Dictionary(uniqueKeysWithValues: items.compactMap { item in
+            guard let account = item[kSecAttrAccount as String] as? String,
+                  let marker = try? loadDeletionMarker(account: account) else {
+                return nil
+            }
+            return (account, marker.deletedAt)
+        })
+    }
+
+    private func loadDeletionMarker(account: String) throws -> DeletionMarker {
+        var query = deletionItemQuery(account: account, synchronizable: kSecAttrSynchronizableAny)
+        query[kSecReturnData as String] = true
+        query[kSecMatchLimit as String] = kSecMatchLimitOne
+
+        var result: CFTypeRef?
+        let status = SecItemCopyMatching(query as CFDictionary, &result)
+        guard status != errSecItemNotFound else {
+            throw VaultError.missingRecord
+        }
+        guard status == errSecSuccess else {
+            throw VaultError.keychain(status)
+        }
+        guard let data = result as? Data, let marker = try? decoder.decode(DeletionMarker.self, from: data) else {
+            throw VaultError.decodingFailed
+        }
+        return marker
+    }
+
+    private func legacyBaseQuery(account: String) -> [String: Any] {
+        [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: legacyService,
+            kSecAttrAccount as String: account
+        ]
+    }
+
+    private func migrateLegacyRecordsIfNeeded() throws {
+        guard !userDefaults.bool(forKey: migrationKey) else {
+            return
+        }
+
+        let legacyRecords = try loadLegacyRecords()
+        let sharedRecords = try loadSharedRecords()
+        var merged = Dictionary(uniqueKeysWithValues: sharedRecords.map { ($0.id, $0) })
+
+        for record in legacyRecords {
+            if let existing = merged[record.id], existing.updatedAt >= record.updatedAt {
+                continue
+            }
+            try save(record)
+            merged[record.id] = record
+        }
+
+        userDefaults.set(true, forKey: migrationKey)
+    }
+
+    private func loadLegacyRecords() throws -> [CredentialRecord] {
+        try loadLegacyIDs().compactMap { id in
+            try? loadLegacyRecord(id: id)
+        }
+    }
+
+    private func loadLegacyRecord(id: UUID) throws -> CredentialRecord {
+        var query = legacyBaseQuery(account: id.uuidString)
         query[kSecReturnData as String] = true
         query[kSecMatchLimit as String] = kSecMatchLimitOne
 
@@ -100,35 +347,39 @@ final class KeychainVault {
         return record
     }
 
-    private func baseQuery(account: String) -> [String: Any] {
-        [
-            kSecClass as String: kSecClassGenericPassword,
-            kSecAttrService as String: service,
-            kSecAttrAccount as String: account
-        ]
-    }
-
-    private func loadIDs() throws -> [UUID] {
-        guard let strings = userDefaults.stringArray(forKey: indexKey) else {
+    private func loadLegacyIDs() throws -> [UUID] {
+        guard let strings = userDefaults.stringArray(forKey: legacyIndexKey) else {
             return []
         }
         return strings.compactMap(UUID.init(uuidString:))
     }
 
-    private func saveIDs(_ ids: [UUID]) {
-        userDefaults.set(ids.map(\.uuidString), forKey: indexKey)
-    }
-
-    private func appendID(_ id: UUID) {
-        var ids = (try? loadIDs()) ?? []
-        if !ids.contains(id) {
-            ids.append(id)
-            saveIDs(ids)
+    private static func defaultAccessGroup() -> String? {
+        guard let task = SecTaskCreateFromSelf(nil) else {
+            return nil
         }
-    }
 
-    private func removeID(_ id: UUID) {
-        let ids = ((try? loadIDs()) ?? []).filter { $0 != id }
-        saveIDs(ids)
+        if let groups = SecTaskCopyValueForEntitlement(
+            task,
+            "keychain-access-groups" as CFString,
+            nil
+        ) as? [String],
+           let sharedGroup = groups.first(where: { $0.hasSuffix(".com.varunsuryawanshi.vpass.shared") }) {
+            return sharedGroup
+        }
+
+        guard let applicationIdentifier = SecTaskCopyValueForEntitlement(
+            task,
+            "application-identifier" as CFString,
+            nil
+        ) as? String,
+              let teamID = applicationIdentifier.split(separator: ".").first else {
+            return nil
+        }
+        return "\(teamID).com.varunsuryawanshi.vpass.shared"
     }
+}
+
+private struct DeletionMarker: Codable {
+    let deletedAt: Date
 }

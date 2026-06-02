@@ -5,8 +5,9 @@ struct CredentialEditorView: View {
     @State private var groupMode: GroupMode
     @State private var newGroupName: String
     @State private var revealPassword = false
-    @State private var isScanningScreen = false
     @State private var errorMessage: String?
+    @State private var expiryShortcutValue = 30
+    @State private var expiryShortcutUnit = ExpiryShortcutUnit.days
 
     let groupsByTag: [String: [String]]
     let onSave: (CredentialDraft) -> Void
@@ -71,6 +72,12 @@ struct CredentialEditorView: View {
                             selection: $draft.expiresAt,
                             displayedComponents: [.date]
                         )
+                        ExpiryShortcutControl(
+                            value: $expiryShortcutValue,
+                            unit: $expiryShortcutUnit
+                        ) {
+                            applyExpiryShortcut()
+                        }
                     }
                 }
 
@@ -82,18 +89,10 @@ struct CredentialEditorView: View {
                         Stepper("Period: \(draft.totpPeriod)s", value: $draft.totpPeriod, in: 10...120, step: 5)
                         Stepper("Digits: \(draft.totpDigits)", value: $draft.totpDigits, in: 6...8)
                     }
-                    HStack {
-                        Button {
-                            beginScanFromScreen()
-                        } label: {
-                            Label(isScanningScreen ? "Scanning..." : "Scan Area", systemImage: "qrcode.viewfinder")
-                        }
-                        .disabled(isScanningScreen)
-                        Button {
-                            scanFromImage()
-                        } label: {
-                            Label("Choose Image", systemImage: "photo")
-                        }
+                    Button {
+                        scanFromImage()
+                    } label: {
+                        Label("Choose QR Image", systemImage: "photo")
                     }
                     if !draft.totpSecretBase32.isEmpty,
                        let code = try? TOTPGenerator.code(secretBase32: draft.totpSecretBase32, period: draft.totpPeriod, digits: draft.totpDigits) {
@@ -199,23 +198,13 @@ struct CredentialEditorView: View {
         groupsByTag[draft.tag] ?? []
     }
 
-    private func beginScanFromScreen() {
-        scanFromScreen()
-    }
-
-    private func scanFromScreen() {
-        isScanningScreen = true
-        Task {
-            do {
-                let payload = try await QRCodeScanner.scanSelectedScreenRegion()
-                try applyOTPAuth(payload)
-            } catch QRCodeScannerError.selectionCancelled {
-            } catch QRCodeScannerError.screenCapturePermissionRequested {
-            } catch {
-                errorMessage = error.localizedDescription
-            }
-            isScanningScreen = false
-        }
+    private func applyExpiryShortcut() {
+        let today = Calendar.current.startOfDay(for: Date())
+        draft.expiresAt = Calendar.current.date(
+            byAdding: expiryShortcutUnit.calendarComponent,
+            value: expiryShortcutValue,
+            to: today
+        ) ?? draft.expiresAt
     }
 
     @MainActor
@@ -249,6 +238,69 @@ struct CredentialEditorView: View {
 private enum GroupMode: Hashable {
     case existing
     case new
+}
+
+private enum ExpiryShortcutUnit: String, CaseIterable, Identifiable {
+    case days = "Days"
+    case months = "Months"
+
+    var id: Self { self }
+
+    var calendarComponent: Calendar.Component {
+        switch self {
+        case .days:
+            .day
+        case .months:
+            .month
+        }
+    }
+
+    var range: ClosedRange<Int> {
+        switch self {
+        case .days:
+            1...730
+        case .months:
+            1...60
+        }
+    }
+}
+
+private struct ExpiryShortcutControl: View {
+    @Binding var value: Int
+    @Binding var unit: ExpiryShortcutUnit
+    let onApply: () -> Void
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Label("From now", systemImage: "calendar.badge.clock")
+                .foregroundStyle(.secondary)
+
+            Picker("Unit", selection: $unit) {
+                ForEach(ExpiryShortcutUnit.allCases) { unit in
+                    Text(unit.rawValue).tag(unit)
+                }
+            }
+            .labelsHidden()
+            .pickerStyle(.segmented)
+            .frame(width: 170)
+            .onChange(of: unit) { _, newUnit in
+                value = min(max(value, newUnit.range.lowerBound), newUnit.range.upperBound)
+            }
+
+            Stepper(value: $value, in: unit.range) {
+                Text("\(value)")
+                    .monospacedDigit()
+                    .frame(minWidth: 34, alignment: .trailing)
+            }
+            .frame(width: 120)
+
+            Button {
+                onApply()
+            } label: {
+                Label("Set expiry", systemImage: "calendar.badge.checkmark")
+            }
+        }
+    }
 }
 
 private struct ExistingGroupPicker: View {

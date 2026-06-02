@@ -1,6 +1,6 @@
 # VPass
 
-VPass is a native SwiftUI macOS password manager built for local, personal credential storage. It stores credential records in the user's macOS Keychain, supports TOTP MFA codes, and includes a menu bar quick search for fast copy actions.
+VPass is a native SwiftUI macOS password manager built for personal credential storage across Apple devices. It stores credential records in synchronizable iCloud Keychain, supports TOTP MFA codes, and includes a menu bar quick search for fast copy actions.
 
 ## Features
 
@@ -20,13 +20,15 @@ VPass is a native SwiftUI macOS password manager built for local, personal crede
 - Manual encrypted backup to app-managed current and previous recovery files, plus one-off export.
 - Confirm before deleting a credential.
 - Remembers the last selected tag across app launches.
+- iOS companion app can add, edit, search, copy, and scan TOTP QR codes into the same shared vault.
 
 ## Security Model
 
 - Credential records are serialized as JSON and stored as Keychain generic password items.
-- Keychain items use `kSecAttrAccessibleWhenUnlockedThisDeviceOnly`.
-- Only a local credential UUID index is stored in user defaults.
-- VPass does not sync secrets and does not send vault data over the network.
+- Live credential records use `kSecAttrSynchronizable` and the shared Keychain access group `com.varunsuryawanshi.vpass.shared`.
+- Keychain items use `kSecAttrAccessibleWhenUnlocked`.
+- Existing Mac-only credentials are migrated once into the shared iCloud Keychain vault.
+- VPass does not run its own credential server; sync is handled by Apple's iCloud Keychain.
 - Screen Recording permission is used only for the user-triggered QR scan rectangle flow.
 - Backup files are encrypted with AES-GCM using a password-derived key and random salt.
 - The automatic backup password is stored in macOS Keychain; automatic backup files are stored in the app's Application Support folder.

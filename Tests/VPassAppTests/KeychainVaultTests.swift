@@ -10,7 +10,7 @@ final class KeychainVaultTests: XCTestCase {
             defaults.removePersistentDomain(forName: suiteName)
         }
 
-        let vault = KeychainVault(userDefaults: defaults)
+        let vault = KeychainVault(userDefaults: defaults, accessGroup: nil, synchronizesWithiCloud: false)
         let record = CredentialRecord(
             id: UUID(),
             tag: VaultTag.work.name,

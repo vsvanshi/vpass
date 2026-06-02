@@ -13,27 +13,38 @@ final class VaultViewModel: ObservableObject {
     @Published var statusMessage: String?
     @Published private(set) var isAutomaticBackupRunning = false
     @Published private(set) var automaticBackupErrorMessage: String?
+    @Published private(set) var isTOTPSyncEnabled: Bool
+    @Published private(set) var lastTOTPSyncAt: Date?
+    @Published private(set) var totpSyncErrorMessage: String?
 
     private let vault: KeychainVault
     private let backupService = BackupService()
     private let backupConfigurationStore: BackupConfigurationStore
+    private let totpSyncStore: TOTPKeychainSyncStore
     private let userDefaults: UserDefaults
     private let selectedTagDefaultsKey = "selectedTag"
     private let lastBackupAtDefaultsKey = "lastBackupAt"
     private let lastVaultChangeAtDefaultsKey = "lastVaultChangeAt"
+    private let totpSyncEnabledDefaultsKey = "totpSyncEnabled"
+    private let lastTOTPSyncAtDefaultsKey = "lastTOTPSyncAt"
     private var automaticBackupTask: Task<Void, Never>?
 
     init(
         vault: KeychainVault,
         userDefaults: UserDefaults = .standard,
-        backupConfigurationStore: BackupConfigurationStore? = nil
+        backupConfigurationStore: BackupConfigurationStore? = nil,
+        totpSyncStore: TOTPKeychainSyncStore? = nil
     ) {
         self.vault = vault
         self.userDefaults = userDefaults
         self.backupConfigurationStore = backupConfigurationStore ?? BackupConfigurationStore(userDefaults: userDefaults)
+        self.totpSyncStore = totpSyncStore ?? TOTPKeychainSyncStore()
+        isTOTPSyncEnabled = userDefaults.bool(forKey: totpSyncEnabledDefaultsKey)
+        lastTOTPSyncAt = userDefaults.object(forKey: lastTOTPSyncAtDefaultsKey) as? Date
         let savedTag = userDefaults.string(forKey: selectedTagDefaultsKey) ?? VaultTag.personal.name
         selectedTag = VaultTag.all.contains(where: { $0.name == savedTag }) ? savedTag : VaultTag.personal.name
         reload()
+        syncTOTPIfNeeded(showSuccess: false)
     }
 
     var selectedTagRecords: [CredentialRecord] {
@@ -97,6 +108,17 @@ final class VaultViewModel: ObservableObject {
         backupConfigurationStore.isConfigured()
     }
 
+    var totpSyncCredentialCount: Int {
+        records.filter(\.hasTOTP).count
+    }
+
+    var lastTOTPSyncText: String {
+        guard let lastTOTPSyncAt else {
+            return "Never"
+        }
+        return lastTOTPSyncAt.formatted(date: .abbreviated, time: .shortened)
+    }
+
     var selectedRecord: CredentialRecord? {
         guard let selectedID else {
             return filteredRecords.first
@@ -142,6 +164,7 @@ final class VaultViewModel: ObservableObject {
             selectedID = record.id
             reload()
             markVaultChanged()
+            syncTOTPIfNeeded()
             statusMessage = "Saved \(record.title.isEmpty ? "item" : record.title)."
         } catch {
             errorMessage = error.localizedDescription
@@ -157,6 +180,7 @@ final class VaultViewModel: ObservableObject {
             selectedID = nil
             reload()
             markVaultChanged()
+            syncTOTPIfNeeded()
             statusMessage = "Deleted item."
         } catch {
             errorMessage = error.localizedDescription
@@ -250,6 +274,50 @@ final class VaultViewModel: ObservableObject {
         }
     }
 
+    func enableTOTPSync() {
+        guard !isTOTPSyncEnabled else {
+            syncTOTPNow()
+            return
+        }
+        guard confirmEnableTOTPSync() else {
+            return
+        }
+
+        isTOTPSyncEnabled = true
+        userDefaults.set(true, forKey: totpSyncEnabledDefaultsKey)
+        syncTOTPIfNeeded()
+    }
+
+    func syncTOTPNow() {
+        guard isTOTPSyncEnabled else {
+            enableTOTPSync()
+            return
+        }
+        syncTOTPIfNeeded()
+    }
+
+    func disableTOTPSync() {
+        guard isTOTPSyncEnabled else {
+            return
+        }
+        guard confirmDisableTOTPSync() else {
+            return
+        }
+
+        do {
+            try totpSyncStore.clear()
+            isTOTPSyncEnabled = false
+            lastTOTPSyncAt = nil
+            totpSyncErrorMessage = nil
+            userDefaults.set(false, forKey: totpSyncEnabledDefaultsKey)
+            userDefaults.removeObject(forKey: lastTOTPSyncAtDefaultsKey)
+            statusMessage = "iPhone TOTP sync disabled."
+        } catch {
+            totpSyncErrorMessage = error.localizedDescription
+            errorMessage = error.localizedDescription
+        }
+    }
+
     func importEncryptedBackup() {
         do {
             guard let source = chooseBackupImportURL() else {
@@ -274,6 +342,7 @@ final class VaultViewModel: ObservableObject {
             }
             reload()
             markVaultChanged()
+            syncTOTPIfNeeded()
             statusMessage = "Imported \(importedRecords.count) credential\(importedRecords.count == 1 ? "" : "s")."
             showInfo(
                 title: "Backup Imported",
@@ -315,6 +384,7 @@ final class VaultViewModel: ObservableObject {
             }
             reload()
             markVaultChanged()
+            syncTOTPIfNeeded()
             statusMessage = "Restored \(importedRecords.count) credential\(importedRecords.count == 1 ? "" : "s")."
             showInfo(
                 title: "Backup Restored",
@@ -344,6 +414,26 @@ final class VaultViewModel: ObservableObject {
 
     private func markBackupCompleted(at date: Date = Date()) {
         userDefaults.set(date, forKey: lastBackupAtDefaultsKey)
+    }
+
+    private func syncTOTPIfNeeded(showSuccess: Bool = true) {
+        guard isTOTPSyncEnabled else {
+            return
+        }
+
+        do {
+            try totpSyncStore.sync(records: records)
+            let syncDate = Date()
+            lastTOTPSyncAt = syncDate
+            totpSyncErrorMessage = nil
+            userDefaults.set(syncDate, forKey: lastTOTPSyncAtDefaultsKey)
+            if showSuccess {
+                statusMessage = "Synced \(totpSyncCredentialCount) TOTP credential\(totpSyncCredentialCount == 1 ? "" : "s")."
+            }
+        } catch {
+            totpSyncErrorMessage = error.localizedDescription
+            errorMessage = error.localizedDescription
+        }
     }
 
     private func runManagedBackupNow() {
@@ -526,6 +616,26 @@ final class VaultViewModel: ObservableObject {
         let alert = NSAlert()
         alert.messageText = "Disable Automatic Backup?"
         alert.informativeText = "VPass will remove the backup master password from Keychain. Existing backup files will not be deleted."
+        alert.alertStyle = .warning
+        alert.addButton(withTitle: "Disable")
+        alert.addButton(withTitle: "Cancel")
+        return alert.runModal() == .alertFirstButtonReturn
+    }
+
+    private func confirmEnableTOTPSync() -> Bool {
+        let alert = NSAlert()
+        alert.messageText = "Enable iPhone TOTP Sync?"
+        alert.informativeText = "VPass will sync authenticator setup secrets through iCloud Keychain for your future iPhone viewer app. Passwords stay local to this Mac."
+        alert.alertStyle = .warning
+        alert.addButton(withTitle: "Enable")
+        alert.addButton(withTitle: "Cancel")
+        return alert.runModal() == .alertFirstButtonReturn
+    }
+
+    private func confirmDisableTOTPSync() -> Bool {
+        let alert = NSAlert()
+        alert.messageText = "Disable iPhone TOTP Sync?"
+        alert.informativeText = "VPass will remove synced TOTP viewer items from the shared iCloud Keychain group. Your local vault will not be changed."
         alert.alertStyle = .warning
         alert.addButton(withTitle: "Disable")
         alert.addButton(withTitle: "Cancel")

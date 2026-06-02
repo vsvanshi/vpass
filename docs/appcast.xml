@@ -6,17 +6,18 @@
         <description>Appcast feed for VPass macOS updates.</description>
         <language>en</language>
         <item>
-            <title>1.0.0</title>
-            <pubDate>Tue, 02 Jun 2026 13:40:55 +0530</pubDate>
+            <title>1.0.1</title>
+            <pubDate>Tue, 02 Jun 2026 20:22:31 +0530</pubDate>
             <link>https://github.com/vsvanshi/vpass</link>
-            <sparkle:version>4</sparkle:version>
-            <sparkle:shortVersionString>1.0.0</sparkle:shortVersionString>
+            <sparkle:version>5</sparkle:version>
+            <sparkle:shortVersionString>1.0.1</sparkle:shortVersionString>
             <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
-            <enclosure url="https://github.com/vsvanshi/vpass/releases/download/v1.0.0/VPass-1.0.0.dmg" length="4655781" type="application/octet-stream" sparkle:edSignature="uScdArxkbnwbYI6uYVJxRqMQtW2lZgAJRKEi2u4guEuniJ6nGRsbgXWeoTxCO7Xqc1lpKFM7Yk/WwVQ3oSogCg=="/>
+            <enclosure url="https://github.com/vsvanshi/vpass/releases/download/v1.0.1/VPass-1.0.1.dmg" length="4739694" type="application/octet-stream" sparkle:edSignature="piFxrHCbcvVh2WOL1jOTvOKKqqQbgN0ou8DpFHMOLxuYi/ETFU56M/QL1VkAxnzG2GqY0okMKEQnliuLUrTQAg=="/>
             <sparkle:deltas>
-                <enclosure url="https://github.com/vsvanshi/vpass/releases/download/v1.0.0/VPass4-3.delta" sparkle:deltaFrom="3" length="105450" type="application/octet-stream" sparkle:deltaFromSparkleExecutableSize="977808" sparkle:deltaFromSparkleLocales="de,he,ar,el,ja,fa,uk" sparkle:edSignature="qlUZo6aiBXtZeXj/TNU0k9NtUJ2dyhJdqN4Xcnf8OHvbbcSyiN8AN/mcaaeF2GcUe1yLXPxB6lV0Wmb3kYQ9Dw=="/>
-                <enclosure url="https://github.com/vsvanshi/vpass/releases/download/v1.0.0/VPass4-2.delta" sparkle:deltaFrom="2" length="178982" type="application/octet-stream" sparkle:deltaFromSparkleExecutableSize="977808" sparkle:deltaFromSparkleLocales="de,he,ar,el,ja,fa,uk" sparkle:edSignature="HaR7BsHapBc7e5qVKJkcrhUczkCknKaS5cus8sJkldnLhTblfM0bQspYu3BlUPdZH31WHFnfKmH947/J3IrADw=="/>
-                <enclosure url="https://github.com/vsvanshi/vpass/releases/download/v1.0.0/VPass4-1.delta" sparkle:deltaFrom="1" length="191386" type="application/octet-stream" sparkle:deltaFromSparkleExecutableSize="977808" sparkle:deltaFromSparkleLocales="de,he,ar,el,ja,fa,uk" sparkle:edSignature="u37Zi+Opn+UhlCZPXRi9arqg6MoDMmj+JRzNwBshmeDgbhOIzQmn58lo8FHxQW+vY3zkJyHAO9IcMKmOwUkmAw=="/>
+                <enclosure url="https://github.com/vsvanshi/vpass/releases/download/v1.0.1/VPass5-4.delta" sparkle:deltaFrom="4" length="219174" type="application/octet-stream" sparkle:deltaFromSparkleExecutableSize="977808" sparkle:deltaFromSparkleLocales="de,he,ar,el,ja,fa,uk" sparkle:edSignature="i8CVY6b/YUXBSIAM3Gijmex9CLWzOzqFsstlF1ja2lRM9S74tRaKp0lR5Of/RfRLWyLaYHdpj+bTohgi3H8YCA=="/>
+                <enclosure url="https://github.com/vsvanshi/vpass/releases/download/v1.0.1/VPass5-3.delta" sparkle:deltaFrom="3" length="233698" type="application/octet-stream" sparkle:deltaFromSparkleExecutableSize="977808" sparkle:deltaFromSparkleLocales="de,he,ar,el,ja,fa,uk" sparkle:edSignature="k9guaEYrPkv/d1R+OOnRspwvxOh6lOJ3LcuRZhbwpRIg52qstxGkQUnTTXDUW3qjckYKUSmzQ1vl0623JlnTAw=="/>
+                <enclosure url="https://github.com/vsvanshi/vpass/releases/download/v1.0.1/VPass5-2.delta" sparkle:deltaFrom="2" length="279230" type="application/octet-stream" sparkle:deltaFromSparkleExecutableSize="977808" sparkle:deltaFromSparkleLocales="de,he,ar,el,ja,fa,uk" sparkle:edSignature="EAQIk3kB/q9+55vMYAkFAhtH0e9b1OdG72OuzxjOQSr58H/CZMOeOoA3SUPTJZ4zgXmysKSdkfSECP05MsK6AA=="/>
+                <enclosure url="https://github.com/vsvanshi/vpass/releases/download/v1.0.1/VPass5-1.delta" sparkle:deltaFrom="1" length="294166" type="application/octet-stream" sparkle:deltaFromSparkleExecutableSize="977808" sparkle:deltaFromSparkleLocales="de,he,ar,el,ja,fa,uk" sparkle:edSignature="bSx4AtLd4fQ22MewtUKP9DL0/mWgS1nKv9vDqZktmsweTONDF1N/H2xwy1vUJ6i0f+G6DHugYQBW80JK8CRzAQ=="/>
             </sparkle:deltas>
         </item>
     </channel>
