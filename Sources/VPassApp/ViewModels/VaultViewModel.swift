@@ -22,7 +22,6 @@ final class VaultViewModel: ObservableObject {
     private let lastBackupAtDefaultsKey = "lastBackupAt"
     private let lastVaultChangeAtDefaultsKey = "lastVaultChangeAt"
     private var automaticBackupTask: Task<Void, Never>?
-    private var pendingAutomaticBackupAfterCurrent = false
 
     init(
         vault: KeychainVault,
@@ -69,7 +68,9 @@ final class VaultViewModel: ObservableObject {
     var backupHealth: BackupHealth {
         let lastBackupAt = userDefaults.object(forKey: lastBackupAtDefaultsKey) as? Date
         let lastVaultChangeAt = userDefaults.object(forKey: lastVaultChangeAtDefaultsKey) as? Date
-        let destinationName = (try? backupConfigurationStore.loadDestination())?.displayName
+        let destination = try? backupConfigurationStore.loadDestination()
+        let currentBackup = destination.map { backupConfigurationStore.backupFileInfo(for: $0.url) }
+        let previousBackup = destination.map { backupConfigurationStore.backupFileInfo(for: $0.previousURL) }
         return BackupHealth(
             recordCount: records.count,
             changedRecordCount: records.filter { record in
@@ -83,7 +84,8 @@ final class VaultViewModel: ObservableObject {
             isConfigured: backupConfigurationStore.isConfigured(),
             isRunning: isAutomaticBackupRunning,
             errorMessage: automaticBackupErrorMessage,
-            destinationName: destinationName
+            currentBackup: currentBackup,
+            previousBackup: previousBackup
         )
     }
 
@@ -183,7 +185,8 @@ final class VaultViewModel: ObservableObject {
             let password = try promptForBackupPassword(
                 title: "Export Encrypted Backup",
                 message: "Choose a backup password. You will need this password to restore your credentials and TOTP secrets.",
-                confirmsPassword: true
+                confirmsPassword: true,
+                confirmButtonTitle: "Export"
             )
             let backupData = try backupService.export(records: records, password: password)
             guard let destination = chooseBackupExportURL() else {
@@ -201,26 +204,32 @@ final class VaultViewModel: ObservableObject {
 
     func setUpAutomaticBackup() {
         do {
+            let isChangingPassword = backupConfigurationStore.isConfigured()
             let password = try promptForBackupPassword(
-                title: "Set Up Automatic Backup",
-                message: "Choose a backup master password. VPass stores it in Keychain and uses it to keep one encrypted backup file updated.",
-                confirmsPassword: true
+                title: isChangingPassword ? "Change Backup Password" : "Set Up Backup",
+                message: isChangingPassword
+                    ? "Choose a new backup password. VPass stores it in Keychain and rewrites the latest backup with the new password."
+                    : "Choose a backup password. VPass stores it in Keychain and uses it for encrypted recovery backups.",
+                confirmsPassword: true,
+                confirmButtonTitle: isChangingPassword ? "Change" : "Set Up",
+                showsRules: true
             )
-            guard let destination = chooseAutomaticBackupURL() else {
-                return
-            }
-            try backupConfigurationStore.saveConfiguration(url: destination, password: password)
+            try backupConfigurationStore.saveConfiguration(password: password)
             automaticBackupErrorMessage = nil
-            statusMessage = "Automatic backup configured."
-            runAutomaticBackupNow(quiet: false)
+            statusMessage = isChangingPassword ? "Backup password changed." : "Backup configured."
+            backUpNow()
         } catch BackupPromptError.cancelled {
         } catch {
             errorMessage = error.localizedDescription
         }
     }
 
-    func retryAutomaticBackup() {
-        runAutomaticBackupNow(quiet: false)
+    func backUpNow() {
+        guard backupConfigurationStore.isConfigured() else {
+            setUpAutomaticBackup()
+            return
+        }
+        runManagedBackupNow()
     }
 
     func disableAutomaticBackup() {
@@ -232,7 +241,6 @@ final class VaultViewModel: ObservableObject {
         }
         do {
             automaticBackupTask?.cancel()
-            pendingAutomaticBackupAfterCurrent = false
             try backupConfigurationStore.clear()
             automaticBackupErrorMessage = nil
             isAutomaticBackupRunning = false
@@ -250,7 +258,9 @@ final class VaultViewModel: ObservableObject {
             let password = try promptForBackupPassword(
                 title: "Import Encrypted Backup",
                 message: "Enter the backup password to restore credentials from this file.",
-                confirmsPassword: false
+                confirmsPassword: false,
+                confirmButtonTitle: "Import",
+                showsRules: false
             )
             let backupData = try Data(contentsOf: source)
             let importedRecords = try backupService.import(data: backupData, password: password)
@@ -263,18 +273,53 @@ final class VaultViewModel: ObservableObject {
                 try vault.save(record)
             }
             reload()
-            if backupConfigurationStore.isConfigured() {
-                markVaultChanged()
-                runAutomaticBackupNow(quiet: true)
-            } else {
-                markBackupCompleted()
-            }
+            markVaultChanged()
             statusMessage = "Imported \(importedRecords.count) credential\(importedRecords.count == 1 ? "" : "s")."
             showInfo(
                 title: "Backup Imported",
                 message: "Imported \(importedRecords.count) credential\(importedRecords.count == 1 ? "" : "s")."
             )
         } catch BackupPromptError.cancelled {
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    func restoreCurrentBackup() {
+        restoreManagedBackup(kind: .current)
+    }
+
+    func restorePreviousBackup() {
+        restoreManagedBackup(kind: .previous)
+    }
+
+    private func restoreManagedBackup(kind: ManagedBackupKind) {
+        do {
+            let destination = try backupConfigurationStore.loadDestination()
+            let url = kind.url(in: destination)
+            guard FileManager.default.fileExists(atPath: url.path) else {
+                errorMessage = "\(kind.title) was not found."
+                return
+            }
+
+            let password = try backupConfigurationStore.loadPassword()
+            let backupData = try Data(contentsOf: url)
+            let importedRecords = try backupService.import(data: backupData, password: password)
+
+            guard confirmRestore(kind: kind, recordCount: importedRecords.count) else {
+                return
+            }
+
+            for record in importedRecords {
+                try vault.save(record)
+            }
+            reload()
+            markVaultChanged()
+            statusMessage = "Restored \(importedRecords.count) credential\(importedRecords.count == 1 ? "" : "s")."
+            showInfo(
+                title: "Backup Restored",
+                message: "Added missing credentials and updated matching credentials from \(kind.title.lowercased())."
+            )
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -295,48 +340,24 @@ final class VaultViewModel: ObservableObject {
     private func markVaultChanged(at date: Date = Date()) {
         userDefaults.set(date, forKey: lastVaultChangeAtDefaultsKey)
         automaticBackupErrorMessage = nil
-        scheduleAutomaticBackup()
     }
 
     private func markBackupCompleted(at date: Date = Date()) {
         userDefaults.set(date, forKey: lastBackupAtDefaultsKey)
     }
 
-    private func scheduleAutomaticBackup() {
-        guard backupConfigurationStore.isConfigured(), !records.isEmpty else {
-            return
-        }
+    private func runManagedBackupNow() {
         if isAutomaticBackupRunning {
-            pendingAutomaticBackupAfterCurrent = true
-            return
-        }
-
-        automaticBackupTask?.cancel()
-        let snapshot = records
-        let coverageDate = (userDefaults.object(forKey: lastVaultChangeAtDefaultsKey) as? Date) ?? Date()
-        automaticBackupTask = Task { [weak self] in
-            try? await Task.sleep(nanoseconds: 1_000_000_000)
-            guard !Task.isCancelled else {
-                return
-            }
-            await self?.performAutomaticBackup(records: snapshot, coveringChangesThrough: coverageDate, quiet: true)
-        }
-    }
-
-    private func runAutomaticBackupNow(quiet: Bool) {
-        if isAutomaticBackupRunning {
-            pendingAutomaticBackupAfterCurrent = true
             return
         }
         automaticBackupTask?.cancel()
         let snapshot = records
-        let coverageDate = (userDefaults.object(forKey: lastVaultChangeAtDefaultsKey) as? Date) ?? Date()
         automaticBackupTask = Task { [weak self] in
-            await self?.performAutomaticBackup(records: snapshot, coveringChangesThrough: coverageDate, quiet: quiet)
+            await self?.performManagedBackup(records: snapshot)
         }
     }
 
-    private func performAutomaticBackup(records: [CredentialRecord], coveringChangesThrough coverageDate: Date, quiet: Bool) async {
+    private func performManagedBackup(records: [CredentialRecord]) async {
         guard backupConfigurationStore.isConfigured() else {
             return
         }
@@ -351,73 +372,34 @@ final class VaultViewModel: ObservableObject {
                 try BackupService().export(records: records, password: password)
             }.value
 
-            try writeAutomaticBackup(backupData, to: destination.url)
-            markBackupCompleted(at: coverageDate)
+            try writeAutomaticBackup(backupData, to: destination)
+            markBackupCompleted()
             isAutomaticBackupRunning = false
-            if !quiet {
-                statusMessage = "Automatic backup updated."
-            }
-            runPendingAutomaticBackupIfNeeded(after: coverageDate)
+            statusMessage = "Backup updated."
         } catch {
             isAutomaticBackupRunning = false
             automaticBackupErrorMessage = error.localizedDescription
-            if !quiet {
-                errorMessage = error.localizedDescription
-            }
+            errorMessage = error.localizedDescription
         }
     }
 
-    private func runPendingAutomaticBackupIfNeeded(after coverageDate: Date) {
-        let latestChangeAt = userDefaults.object(forKey: lastVaultChangeAtDefaultsKey) as? Date
-        let needsAnotherBackup = pendingAutomaticBackupAfterCurrent || latestChangeAt.map { $0 > coverageDate } == true
-        pendingAutomaticBackupAfterCurrent = false
-        if needsAnotherBackup {
-            scheduleAutomaticBackup()
-        }
-    }
-
-    private func writeAutomaticBackup(_ data: Data, to url: URL) throws {
-        let didAccess = url.startAccessingSecurityScopedResource()
-        defer {
-            if didAccess {
-                url.stopAccessingSecurityScopedResource()
-            }
-        }
-
-        let directory = url.deletingLastPathComponent()
+    private func writeAutomaticBackup(_ data: Data, to destination: BackupDestination) throws {
+        let url = destination.url
+        let directory = destination.url.deletingLastPathComponent()
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
 
         if FileManager.default.fileExists(atPath: url.path) {
-            let previousURL = previousBackupURL(for: url)
-            try? FileManager.default.removeItem(at: previousURL)
-            try? FileManager.default.copyItem(at: url, to: previousURL)
+            try? FileManager.default.removeItem(at: destination.previousURL)
+            try? FileManager.default.copyItem(at: url, to: destination.previousURL)
         }
 
         try data.write(to: url, options: [.atomic])
-    }
-
-    private func previousBackupURL(for url: URL) -> URL {
-        let baseName = url.deletingPathExtension().lastPathComponent
-        let pathExtension = url.pathExtension
-        let previousName = pathExtension.isEmpty ? "\(baseName).previous" : "\(baseName).previous.\(pathExtension)"
-        return url.deletingLastPathComponent().appendingPathComponent(previousName)
     }
 
     private func chooseBackupExportURL() -> URL? {
         let panel = NSSavePanel()
         panel.title = "Export Encrypted VPass Backup"
         panel.nameFieldStringValue = defaultBackupFilename()
-        if let backupType = UTType(filenameExtension: "vpassbackup") {
-            panel.allowedContentTypes = [backupType]
-        }
-        panel.canCreateDirectories = true
-        return panel.runModal() == .OK ? panel.url : nil
-    }
-
-    private func chooseAutomaticBackupURL() -> URL? {
-        let panel = NSSavePanel()
-        panel.title = "Set Up Automatic VPass Backup"
-        panel.nameFieldStringValue = "VPass.vpassbackup"
         if let backupType = UTType(filenameExtension: "vpassbackup") {
             panel.allowedContentTypes = [backupType]
         }
@@ -446,35 +428,55 @@ final class VaultViewModel: ObservableObject {
     private func promptForBackupPassword(
         title: String,
         message: String,
-        confirmsPassword: Bool
+        confirmsPassword: Bool,
+        confirmButtonTitle: String,
+        showsRules: Bool = false
     ) throws -> String {
         let fieldWidth: CGFloat = 320
         let fieldHeight: CGFloat = 24
-        let passwordField = NSSecureTextField(frame: NSRect(x: 0, y: 0, width: fieldWidth, height: fieldHeight))
-        passwordField.placeholderString = "Backup password"
+        let passwordField = BackupPasswordInputRow(
+            placeholder: "Backup password",
+            fieldWidth: fieldWidth - 36,
+            fieldHeight: fieldHeight
+        )
 
-        let stack = NSStackView(frame: NSRect(x: 0, y: 0, width: fieldWidth, height: confirmsPassword ? 86 : 42))
+        let stackHeight: CGFloat = {
+            if confirmsPassword && showsRules {
+                return 124
+            }
+            if confirmsPassword {
+                return 86
+            }
+            return 42
+        }()
+        let stack = NSStackView(frame: NSRect(x: 0, y: 0, width: fieldWidth, height: stackHeight))
         stack.orientation = .vertical
         stack.spacing = 6
         stack.alignment = .leading
         stack.distribution = .fill
         stack.addArrangedSubview(NSTextField(labelWithString: "Backup password"))
-        stack.addArrangedSubview(passwordField)
+        stack.addArrangedSubview(passwordField.view)
 
-        let confirmField: NSSecureTextField?
+        let confirmField: BackupPasswordInputRow?
         if confirmsPassword {
-            let field = NSSecureTextField(frame: NSRect(x: 0, y: 0, width: fieldWidth, height: fieldHeight))
-            field.placeholderString = "Confirm password"
+            let field = BackupPasswordInputRow(
+                placeholder: "Confirm password",
+                fieldWidth: fieldWidth - 36,
+                fieldHeight: fieldHeight
+            )
             stack.addArrangedSubview(NSTextField(labelWithString: "Confirm password"))
-            stack.addArrangedSubview(field)
+            stack.addArrangedSubview(field.view)
             confirmField = field
         } else {
             confirmField = nil
         }
 
-        [passwordField, confirmField].compactMap { $0 }.forEach { field in
-            field.widthAnchor.constraint(equalToConstant: fieldWidth).isActive = true
-            field.heightAnchor.constraint(equalToConstant: fieldHeight).isActive = true
+        if showsRules {
+            let rules = NSTextField(wrappingLabelWithString: "Rules: use at least 8 characters. Keep this password safe; older backup files may still need the password used to create them.")
+            rules.font = .systemFont(ofSize: NSFont.smallSystemFontSize)
+            rules.textColor = .secondaryLabelColor
+            rules.widthAnchor.constraint(equalToConstant: fieldWidth).isActive = true
+            stack.addArrangedSubview(rules)
         }
 
         let alert = NSAlert()
@@ -482,9 +484,9 @@ final class VaultViewModel: ObservableObject {
         alert.informativeText = message
         alert.alertStyle = .informational
         alert.accessoryView = stack
-        alert.addButton(withTitle: confirmsPassword ? "Export" : "Import")
+        alert.addButton(withTitle: confirmButtonTitle)
         alert.addButton(withTitle: "Cancel")
-        alert.window.initialFirstResponder = passwordField
+        alert.window.initialFirstResponder = passwordField.initialFirstResponder
 
         guard alert.runModal() == .alertFirstButtonReturn else {
             throw BackupPromptError.cancelled
@@ -510,10 +512,20 @@ final class VaultViewModel: ObservableObject {
         return alert.runModal() == .alertFirstButtonReturn
     }
 
+    private func confirmRestore(kind: ManagedBackupKind, recordCount: Int) -> Bool {
+        let alert = NSAlert()
+        alert.messageText = "Restore \(kind.title)?"
+        alert.informativeText = "This will add missing credentials and update matching credentials from \(recordCount) backup item\(recordCount == 1 ? "" : "s"). Other current credentials will not be deleted."
+        alert.alertStyle = .warning
+        alert.addButton(withTitle: "Restore")
+        alert.addButton(withTitle: "Cancel")
+        return alert.runModal() == .alertFirstButtonReturn
+    }
+
     private func confirmDisableAutomaticBackup() -> Bool {
         let alert = NSAlert()
         alert.messageText = "Disable Automatic Backup?"
-        alert.informativeText = "VPass will forget the saved backup location and remove the backup master password from Keychain. Existing backup files will not be deleted."
+        alert.informativeText = "VPass will remove the backup master password from Keychain. Existing backup files will not be deleted."
         alert.alertStyle = .warning
         alert.addButton(withTitle: "Disable")
         alert.addButton(withTitle: "Cancel")
@@ -547,6 +559,116 @@ private enum BackupPromptError: LocalizedError {
     }
 }
 
+@MainActor
+private final class BackupPasswordInputRow: NSObject {
+    let view: NSStackView
+    let initialFirstResponder: NSView
+
+    private let secureField: NSSecureTextField
+    private let plainField: NSTextField
+    private let toggleButton: NSButton
+    private var isRevealed = false
+
+    init(placeholder: String, fieldWidth: CGFloat, fieldHeight: CGFloat) {
+        secureField = NSSecureTextField(frame: .zero)
+        secureField.placeholderString = placeholder
+        secureField.isBordered = true
+        secureField.bezelStyle = .roundedBezel
+        secureField.usesSingleLineMode = true
+
+        plainField = NSTextField(frame: .zero)
+        plainField.placeholderString = placeholder
+        plainField.isBordered = true
+        plainField.bezelStyle = .roundedBezel
+        plainField.usesSingleLineMode = true
+        plainField.isHidden = true
+
+        toggleButton = NSButton(frame: .zero)
+        toggleButton.image = NSImage(systemSymbolName: "eye", accessibilityDescription: "Show password")
+        toggleButton.bezelStyle = .texturedRounded
+        toggleButton.isBordered = false
+        toggleButton.setButtonType(.momentaryPushIn)
+        toggleButton.toolTip = "Show password"
+
+        let fieldContainer = NSView(frame: .zero)
+        [secureField, plainField].forEach { field in
+            field.translatesAutoresizingMaskIntoConstraints = false
+            fieldContainer.addSubview(field)
+            NSLayoutConstraint.activate([
+                field.leadingAnchor.constraint(equalTo: fieldContainer.leadingAnchor),
+                field.trailingAnchor.constraint(equalTo: fieldContainer.trailingAnchor),
+                field.topAnchor.constraint(equalTo: fieldContainer.topAnchor),
+                field.bottomAnchor.constraint(equalTo: fieldContainer.bottomAnchor)
+            ])
+        }
+
+        fieldContainer.widthAnchor.constraint(equalToConstant: fieldWidth).isActive = true
+        fieldContainer.heightAnchor.constraint(equalToConstant: fieldHeight).isActive = true
+        toggleButton.widthAnchor.constraint(equalToConstant: 28).isActive = true
+        toggleButton.heightAnchor.constraint(equalToConstant: fieldHeight).isActive = true
+
+        view = NSStackView(views: [fieldContainer, toggleButton])
+        view.orientation = .horizontal
+        view.spacing = 6
+        view.alignment = .centerY
+
+        initialFirstResponder = secureField
+        super.init()
+        toggleButton.target = self
+        toggleButton.action = #selector(toggleReveal)
+    }
+
+    var stringValue: String {
+        get {
+            isRevealed ? plainField.stringValue : secureField.stringValue
+        }
+        set {
+            secureField.stringValue = newValue
+            plainField.stringValue = newValue
+        }
+    }
+
+    @objc private func toggleReveal() {
+        if isRevealed {
+            secureField.stringValue = plainField.stringValue
+        } else {
+            plainField.stringValue = secureField.stringValue
+        }
+        isRevealed.toggle()
+        secureField.isHidden = isRevealed
+        plainField.isHidden = !isRevealed
+        toggleButton.image = NSImage(
+            systemSymbolName: isRevealed ? "eye.slash" : "eye",
+            accessibilityDescription: isRevealed ? "Hide password" : "Show password"
+        )
+        toggleButton.toolTip = isRevealed ? "Hide password" : "Show password"
+        view.window?.makeFirstResponder(isRevealed ? plainField : secureField)
+    }
+}
+
+private enum ManagedBackupKind {
+    case current
+    case previous
+
+    var title: String {
+        switch self {
+        case .current:
+            return "Current Backup"
+        case .previous:
+            return "Previous Backup"
+        }
+    }
+
+    func url(in destination: BackupDestination) -> URL {
+        switch self {
+        case .current:
+            return destination.url
+        case .previous:
+            return destination.previousURL
+        }
+    }
+}
+
 struct BackupHealth: Equatable {
     enum Status: Equatable {
         case current
@@ -563,7 +685,8 @@ struct BackupHealth: Equatable {
     let isConfigured: Bool
     let isRunning: Bool
     let errorMessage: String?
-    let destinationName: String?
+    let currentBackup: BackupFileInfo?
+    let previousBackup: BackupFileInfo?
 
     var status: Status {
         guard recordCount > 0 else {
@@ -614,11 +737,11 @@ struct BackupHealth: Equatable {
     var message: String {
         switch status {
         case .setupNeeded:
-            return "Choose one encrypted backup file that VPass keeps updated."
+            return "VPass keeps current and previous encrypted backups automatically."
         case .failed(let message):
             return message
         case .running:
-            return destinationName.map { "Updating \($0)." } ?? "Updating automatic backup."
+            return "Updating encrypted backup."
         case .current:
             return lastBackupText
         case .pending:
@@ -640,10 +763,32 @@ struct BackupHealth: Equatable {
     }
 
     var detailText: String {
-        if let destinationName {
-            return destinationName
+        if let modifiedAt = currentBackup?.modifiedAt {
+            return modifiedAt.formatted(date: .abbreviated, time: .shortened)
         }
         return lastBackupText
+    }
+
+    var latestBackupText: String {
+        guard let modifiedAt = currentBackup?.modifiedAt else {
+            return "No current backup"
+        }
+        return modifiedAt.formatted(date: .abbreviated, time: .shortened)
+    }
+
+    var previousBackupText: String {
+        guard let modifiedAt = previousBackup?.modifiedAt else {
+            return "No previous backup"
+        }
+        return modifiedAt.formatted(date: .abbreviated, time: .shortened)
+    }
+
+    var hasCurrentBackup: Bool {
+        currentBackup?.exists == true
+    }
+
+    var hasPreviousBackup: Bool {
+        previousBackup?.exists == true
     }
 
     var actionTitle: String {

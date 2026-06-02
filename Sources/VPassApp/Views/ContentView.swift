@@ -2,6 +2,7 @@ import SwiftUI
 
 struct ContentView: View {
     @EnvironmentObject private var viewModel: VaultViewModel
+    @State private var showingSettings = false
 
     var body: some View {
         NavigationSplitView {
@@ -19,6 +20,11 @@ struct ContentView: View {
             Button("OK", role: .cancel) {}
         } message: {
             Text(viewModel.errorMessage ?? "")
+        }
+        .sheet(isPresented: $showingSettings) {
+            SettingsView()
+                .environmentObject(viewModel)
+                .frame(width: 520, height: 430)
         }
     }
 
@@ -63,27 +69,10 @@ struct ContentView: View {
 
     private var passwordList: some View {
         VStack(spacing: 0) {
-            if viewModel.backupHealth.needsAttention || !viewModel.selectedTagRecords.isEmpty {
-                VStack(spacing: 8) {
-                    if viewModel.backupHealth.needsAttention {
-                        BackupHealthRow(health: viewModel.backupHealth) {
-                            switch viewModel.backupHealth.status {
-                            case .setupNeeded:
-                                viewModel.setUpAutomaticBackup()
-                            case .pending, .failed:
-                                viewModel.retryAutomaticBackup()
-                            case .current, .running:
-                                break
-                            }
-                        }
-                    }
-
-                    if !viewModel.selectedTagRecords.isEmpty {
-                        ExpirySummaryRow(summary: viewModel.selectedTagExpirySummary)
-                    }
-                }
+            if !viewModel.selectedTagRecords.isEmpty {
+                ExpirySummaryRow(summary: viewModel.selectedTagExpirySummary)
                 .padding(.horizontal, 12)
-                .padding(.vertical, 10)
+                .padding(.vertical, 8)
 
                 Divider()
             }
@@ -93,6 +82,7 @@ struct ContentView: View {
                     Section {
                         ForEach(group.records) { record in
                             CredentialListRow(record: record)
+                                .listRowInsets(EdgeInsets(top: 2, leading: 12, bottom: 2, trailing: 8))
                                 .tag(record.id)
                         }
                     } header: {
@@ -118,6 +108,25 @@ struct ContentView: View {
         .toolbar {
             ToolbarItem {
                 Button {
+                    viewModel.backUpNow()
+                } label: {
+                    Label("Back Up Now", systemImage: "externaldrive.badge.plus")
+                }
+                .disabled(viewModel.isAutomaticBackupRunning)
+                .help("Back Up Now")
+            }
+
+            ToolbarItem {
+                Button {
+                    showingSettings = true
+                } label: {
+                    Label("Settings", systemImage: "gearshape")
+                }
+                .help("Settings")
+            }
+
+            ToolbarItem {
+                Button {
                     viewModel.startNew()
                 } label: {
                     Label("Add Password", systemImage: "plus")
@@ -128,50 +137,122 @@ struct ContentView: View {
     }
 }
 
-private struct BackupHealthRow: View {
-    let health: BackupHealth
-    let exportAction: () -> Void
+private struct SettingsView: View {
+    @EnvironmentObject private var viewModel: VaultViewModel
+    @Environment(\.dismiss) private var dismiss
 
     var body: some View {
-        HStack(spacing: 10) {
-            Image(systemName: "externaldrive.badge.icloud")
-                .font(.system(size: 18, weight: .semibold))
-                .foregroundStyle(.orange)
-                .frame(width: 28, height: 28)
+        VStack(alignment: .leading, spacing: 18) {
+            HStack {
+                Text("Settings")
+                    .font(.title2.weight(.semibold))
 
-            VStack(alignment: .leading, spacing: 2) {
-                Text(health.title)
-                    .font(.subheadline.weight(.semibold))
-                    .lineLimit(1)
-                Text(health.message)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
-                    .truncationMode(.tail)
-            }
-            .layoutPriority(1)
+                Spacer()
 
-            Spacer(minLength: 8)
-
-            Text(health.detailText)
-                .font(.caption2)
-                .foregroundStyle(.tertiary)
-                .lineLimit(1)
-                .minimumScaleFactor(0.85)
-
-            if !health.actionTitle.isEmpty {
                 Button {
-                    exportAction()
+                    dismiss()
                 } label: {
-                    Label(health.actionTitle, systemImage: health.actionSystemImage)
+                    Label("Close", systemImage: "xmark")
+                        .labelStyle(.iconOnly)
                 }
                 .buttonStyle(.borderless)
-                .help(health.actionTitle)
+                .help("Close")
             }
+
+            VStack(alignment: .leading, spacing: 12) {
+                Label("Recovery", systemImage: "externaldrive.badge.shield.checkmark")
+                    .font(.headline)
+
+                SettingsInfoRow(
+                    title: "Backup password",
+                    value: viewModel.isAutomaticBackupConfigured ? "Saved in Keychain" : "Not set"
+                )
+                SettingsInfoRow(title: "Latest backup", value: viewModel.backupHealth.latestBackupText)
+                SettingsInfoRow(title: "Previous backup", value: viewModel.backupHealth.previousBackupText)
+                SettingsInfoRow(title: "Pending changes", value: pendingChangesText)
+
+                HStack(spacing: 10) {
+                    Button {
+                        viewModel.backUpNow()
+                    } label: {
+                        Label("Back Up Now", systemImage: "externaldrive.badge.plus")
+                    }
+                    .disabled(viewModel.isAutomaticBackupRunning)
+
+                    Button {
+                        viewModel.restoreCurrentBackup()
+                    } label: {
+                        Label("Restore Latest", systemImage: "arrow.down.doc")
+                    }
+                    .disabled(!viewModel.backupHealth.hasCurrentBackup)
+
+                    Button {
+                        viewModel.restorePreviousBackup()
+                    } label: {
+                        Label("Restore Previous", systemImage: "clock.arrow.circlepath")
+                    }
+                    .disabled(!viewModel.backupHealth.hasPreviousBackup)
+                }
+
+                Divider()
+
+                HStack(spacing: 10) {
+                    Button {
+                        viewModel.setUpAutomaticBackup()
+                    } label: {
+                        Label(
+                            viewModel.isAutomaticBackupConfigured ? "Change Backup Password" : "Set Up Backup",
+                            systemImage: "key"
+                        )
+                    }
+
+                    Button(role: .destructive) {
+                        viewModel.disableAutomaticBackup()
+                    } label: {
+                        Label("Disable Backup", systemImage: "trash")
+                    }
+                    .disabled(!viewModel.isAutomaticBackupConfigured)
+                }
+            }
+            .padding(16)
+            .background(.quaternary.opacity(0.35), in: RoundedRectangle(cornerRadius: 8))
+
+            Text("Restore adds missing credentials and updates matching credentials. It does not delete other current credentials.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+
+            Spacer()
         }
-        .padding(.horizontal, 10)
-        .padding(.vertical, 8)
-        .background(.orange.opacity(0.10), in: RoundedRectangle(cornerRadius: 8))
+        .padding(22)
+    }
+
+    private var pendingChangesText: String {
+        let count = viewModel.backupHealth.changedRecordCount
+        if count == 0 {
+            return "None"
+        }
+        if count == 1 {
+            return "1 credential"
+        }
+        return "\(count) credentials"
+    }
+}
+
+private struct SettingsInfoRow: View {
+    let title: String
+    let value: String
+
+    var body: some View {
+        HStack {
+            Text(title)
+                .foregroundStyle(.secondary)
+            Spacer()
+            Text(value)
+                .fontWeight(.medium)
+                .lineLimit(1)
+                .truncationMode(.middle)
+        }
+        .font(.subheadline)
     }
 }
 
@@ -251,32 +332,48 @@ private struct CredentialListRow: View {
         return "No username"
     }
 
+    private var secondaryLine: String {
+        let detail = primaryDetail
+        let group = record.groupName.isEmpty ? "General" : record.groupName
+        guard !group.isEmpty else {
+            return detail
+        }
+        return "\(detail)  -  \(group)"
+    }
+
     private var updatedText: String {
         let calendar = Calendar.current
         if calendar.isDateInToday(record.updatedAt) {
-            return "Updated \(record.updatedAt.formatted(date: .omitted, time: .shortened))"
+            return record.updatedAt.formatted(date: .omitted, time: .shortened)
         }
         if calendar.component(.year, from: record.updatedAt) == calendar.component(.year, from: Date()) {
-            return "Updated \(record.updatedAt.formatted(.dateTime.day().month(.abbreviated)))"
+            return record.updatedAt.formatted(.dateTime.day().month(.abbreviated))
         }
-        return "Updated \(record.updatedAt.formatted(.dateTime.day().month(.abbreviated).year()))"
+        return record.updatedAt.formatted(.dateTime.day().month(.abbreviated).year())
+    }
+
+    private var expiryLabel: String? {
+        guard let expiresAt = record.expiresAt else {
+            return nil
+        }
+        return expiryText(for: expiresAt)
     }
 
     var body: some View {
-        HStack(alignment: .top, spacing: 12) {
+        HStack(spacing: 9) {
             ZStack {
                 RoundedRectangle(cornerRadius: 8)
-                    .fill(.tint.opacity(0.12))
+                    .fill(.tint.opacity(0.10))
                 Image(systemName: record.totpSecretBase32.isEmpty ? "key.fill" : "lock.rotation")
-                    .font(.system(size: 19, weight: .semibold))
+                    .font(.system(size: 14, weight: .semibold))
                     .foregroundStyle(.tint)
             }
-            .frame(width: 42, height: 42)
+            .frame(width: 30, height: 30)
 
-            VStack(alignment: .leading, spacing: 8) {
+            VStack(alignment: .leading, spacing: 3) {
                 HStack(spacing: 6) {
                     Text(displayTitle)
-                        .font(.headline)
+                        .font(.subheadline.weight(.semibold))
                         .lineLimit(1)
                         .truncationMode(.tail)
                         .layoutPriority(1)
@@ -289,39 +386,35 @@ private struct CredentialListRow: View {
                     }
                 }
 
-                Label(primaryDetail, systemImage: record.username.isEmpty ? "link" : "person")
+                Text(secondaryLine)
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
                     .truncationMode(.middle)
-
-                HStack(spacing: 6) {
-                    TagPill(text: record.groupName.isEmpty ? "General" : record.groupName, systemImage: "folder")
-                        .frame(maxWidth: 118, alignment: .leading)
-
-                    if let expiresAt = record.expiresAt {
-                        TagPill(text: expiryText(for: expiresAt), systemImage: "calendar", color: expiryColor(for: expiresAt))
-                            .frame(maxWidth: 128, alignment: .leading)
-                    }
-
-                    Spacer(minLength: 6)
-
-                    Text(updatedText)
-                        .font(.caption2)
-                        .foregroundStyle(.tertiary)
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.85)
-                }
-                .lineLimit(1)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
+
+            VStack(alignment: .trailing, spacing: 3) {
+                if let expiryLabel {
+                    Text(expiryLabel)
+                        .font(.caption2.weight(.medium))
+                        .foregroundStyle(record.expiresAt.map { expiryColor(for: $0) } ?? .secondary)
+                        .lineLimit(1)
+                }
+
+                Text(updatedText)
+                    .font(.caption2)
+                    .foregroundStyle(.tertiary)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.85)
+            }
+            .frame(width: 86, alignment: .trailing)
 
             Image(systemName: "chevron.right")
                 .font(.caption2.weight(.semibold))
                 .foregroundStyle(.tertiary)
-                .padding(.top, 3)
         }
-        .padding(.vertical, 8)
+        .padding(.vertical, 3)
     }
 
     private func expiryText(for date: Date) -> String {
@@ -335,7 +428,7 @@ private struct CredentialListRow: View {
         if days <= 30 {
             return "Expires in \(days)d"
         }
-        return "Expires \(date.formatted(date: .abbreviated, time: .omitted))"
+        return date.formatted(date: .abbreviated, time: .omitted)
     }
 
     private func expiryColor(for date: Date) -> Color {
@@ -355,22 +448,5 @@ private struct CredentialListRow: View {
             from: Calendar.current.startOfDay(for: Date()),
             to: Calendar.current.startOfDay(for: date)
         ).day ?? 0
-    }
-}
-
-private struct TagPill: View {
-    let text: String
-    let systemImage: String
-    var color: Color = .secondary
-
-    var body: some View {
-        Label(text, systemImage: systemImage)
-            .font(.caption2.weight(.medium))
-            .foregroundStyle(color)
-            .lineLimit(1)
-            .truncationMode(.tail)
-            .padding(.horizontal, 7)
-            .padding(.vertical, 3)
-            .background(color.opacity(0.10), in: Capsule())
     }
 }
