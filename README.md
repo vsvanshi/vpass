@@ -16,7 +16,7 @@ VPass is a native SwiftUI macOS password manager built for local, personal crede
 - Loose token search in the app and menu bar, so `platform stage` matches `Stage platform core`.
 - Menu bar quick search with compact username, password, and TOTP copy buttons.
 - Copy feedback and button animation for username, password, and TOTP actions.
-- Encrypted `.vpassbackup` export/import for recovery.
+- Automatic encrypted `.vpassbackup` updates to one recovery file, plus manual export/import.
 - Confirm before deleting a credential.
 - Remembers the last selected tag across app launches.
 
@@ -28,19 +28,23 @@ VPass is a native SwiftUI macOS password manager built for local, personal crede
 - VPass does not sync secrets and does not send vault data over the network.
 - Screen Recording permission is used only for the user-triggered QR scan rectangle flow.
 - Backup files are encrypted with AES-GCM using a password-derived key and random salt.
+- The automatic backup password is stored in macOS Keychain; the backup location is stored as a security-scoped bookmark.
 - Clipboard copy is explicit. Copied values are not currently auto-cleared.
 
 ## Encrypted Backups
 
-Use `File > Export Encrypted Backup...` to save a recovery file:
+Use `File > Set Up Automatic Backup...` to choose one recovery file and a backup master password. VPass stores that password in macOS Keychain, then keeps the same encrypted backup file updated after credential changes.
 
 ```text
-VPass-Backup-YYYY-MM-DD.vpassbackup
+VPass.vpassbackup
+VPass.previous.vpassbackup
 ```
 
-The backup includes credentials, notes, extra fields, and TOTP secrets. Store it somewhere durable, such as iCloud Drive or an external drive. VPass cannot recover this file if you forget the backup password.
+The backup includes credentials, notes, extra fields, and TOTP secrets. Store it somewhere durable, such as iCloud Drive or an external drive. VPass cannot recover this file if the Keychain item and your remembered backup password are both unavailable.
 
-Use `File > Import Encrypted Backup...` to restore. Import adds missing credentials and updates credentials that have the same internal ID.
+Use `File > Export Encrypted Backup...` for a one-off backup file. Use `File > Import Encrypted Backup...` to restore. Import adds missing credentials and updates credentials that have the same internal ID.
+
+Use `File > Disable Automatic Backup` to remove the saved backup location and backup master password from Keychain. Existing backup files are not deleted.
 
 ## Run Locally
 

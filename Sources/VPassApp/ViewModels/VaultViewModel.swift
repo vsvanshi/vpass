@@ -11,17 +11,27 @@ final class VaultViewModel: ObservableObject {
     @Published var editor: CredentialDraft?
     @Published var errorMessage: String?
     @Published var statusMessage: String?
+    @Published private(set) var isAutomaticBackupRunning = false
+    @Published private(set) var automaticBackupErrorMessage: String?
 
     private let vault: KeychainVault
     private let backupService = BackupService()
+    private let backupConfigurationStore: BackupConfigurationStore
     private let userDefaults: UserDefaults
     private let selectedTagDefaultsKey = "selectedTag"
     private let lastBackupAtDefaultsKey = "lastBackupAt"
     private let lastVaultChangeAtDefaultsKey = "lastVaultChangeAt"
+    private var automaticBackupTask: Task<Void, Never>?
+    private var pendingAutomaticBackupAfterCurrent = false
 
-    init(vault: KeychainVault, userDefaults: UserDefaults = .standard) {
+    init(
+        vault: KeychainVault,
+        userDefaults: UserDefaults = .standard,
+        backupConfigurationStore: BackupConfigurationStore? = nil
+    ) {
         self.vault = vault
         self.userDefaults = userDefaults
+        self.backupConfigurationStore = backupConfigurationStore ?? BackupConfigurationStore(userDefaults: userDefaults)
         let savedTag = userDefaults.string(forKey: selectedTagDefaultsKey) ?? VaultTag.personal.name
         selectedTag = VaultTag.all.contains(where: { $0.name == savedTag }) ? savedTag : VaultTag.personal.name
         reload()
@@ -59,6 +69,7 @@ final class VaultViewModel: ObservableObject {
     var backupHealth: BackupHealth {
         let lastBackupAt = userDefaults.object(forKey: lastBackupAtDefaultsKey) as? Date
         let lastVaultChangeAt = userDefaults.object(forKey: lastVaultChangeAtDefaultsKey) as? Date
+        let destinationName = (try? backupConfigurationStore.loadDestination())?.displayName
         return BackupHealth(
             recordCount: records.count,
             changedRecordCount: records.filter { record in
@@ -68,12 +79,20 @@ final class VaultViewModel: ObservableObject {
                 return record.updatedAt > lastBackupAt
             }.count,
             lastBackupAt: lastBackupAt,
-            lastVaultChangeAt: lastVaultChangeAt
+            lastVaultChangeAt: lastVaultChangeAt,
+            isConfigured: backupConfigurationStore.isConfigured(),
+            isRunning: isAutomaticBackupRunning,
+            errorMessage: automaticBackupErrorMessage,
+            destinationName: destinationName
         )
     }
 
     var selectedTagExpirySummary: ExpirySummary {
         ExpirySummary(records: selectedTagRecords)
+    }
+
+    var isAutomaticBackupConfigured: Bool {
+        backupConfigurationStore.isConfigured()
     }
 
     var selectedRecord: CredentialRecord? {
@@ -180,6 +199,49 @@ final class VaultViewModel: ObservableObject {
         }
     }
 
+    func setUpAutomaticBackup() {
+        do {
+            let password = try promptForBackupPassword(
+                title: "Set Up Automatic Backup",
+                message: "Choose a backup master password. VPass stores it in Keychain and uses it to keep one encrypted backup file updated.",
+                confirmsPassword: true
+            )
+            guard let destination = chooseAutomaticBackupURL() else {
+                return
+            }
+            try backupConfigurationStore.saveConfiguration(url: destination, password: password)
+            automaticBackupErrorMessage = nil
+            statusMessage = "Automatic backup configured."
+            runAutomaticBackupNow(quiet: false)
+        } catch BackupPromptError.cancelled {
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    func retryAutomaticBackup() {
+        runAutomaticBackupNow(quiet: false)
+    }
+
+    func disableAutomaticBackup() {
+        guard backupConfigurationStore.isConfigured() else {
+            return
+        }
+        guard confirmDisableAutomaticBackup() else {
+            return
+        }
+        do {
+            automaticBackupTask?.cancel()
+            pendingAutomaticBackupAfterCurrent = false
+            try backupConfigurationStore.clear()
+            automaticBackupErrorMessage = nil
+            isAutomaticBackupRunning = false
+            statusMessage = "Automatic backup disabled."
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
     func importEncryptedBackup() {
         do {
             guard let source = chooseBackupImportURL() else {
@@ -201,8 +263,12 @@ final class VaultViewModel: ObservableObject {
                 try vault.save(record)
             }
             reload()
-            markVaultChanged()
-            markBackupCompleted()
+            if backupConfigurationStore.isConfigured() {
+                markVaultChanged()
+                runAutomaticBackupNow(quiet: true)
+            } else {
+                markBackupCompleted()
+            }
             statusMessage = "Imported \(importedRecords.count) credential\(importedRecords.count == 1 ? "" : "s")."
             showInfo(
                 title: "Backup Imported",
@@ -228,17 +294,130 @@ final class VaultViewModel: ObservableObject {
 
     private func markVaultChanged(at date: Date = Date()) {
         userDefaults.set(date, forKey: lastVaultChangeAtDefaultsKey)
+        automaticBackupErrorMessage = nil
+        scheduleAutomaticBackup()
     }
 
     private func markBackupCompleted(at date: Date = Date()) {
         userDefaults.set(date, forKey: lastBackupAtDefaultsKey)
-        userDefaults.set(date, forKey: lastVaultChangeAtDefaultsKey)
+    }
+
+    private func scheduleAutomaticBackup() {
+        guard backupConfigurationStore.isConfigured(), !records.isEmpty else {
+            return
+        }
+        if isAutomaticBackupRunning {
+            pendingAutomaticBackupAfterCurrent = true
+            return
+        }
+
+        automaticBackupTask?.cancel()
+        let snapshot = records
+        let coverageDate = (userDefaults.object(forKey: lastVaultChangeAtDefaultsKey) as? Date) ?? Date()
+        automaticBackupTask = Task { [weak self] in
+            try? await Task.sleep(nanoseconds: 1_000_000_000)
+            guard !Task.isCancelled else {
+                return
+            }
+            await self?.performAutomaticBackup(records: snapshot, coveringChangesThrough: coverageDate, quiet: true)
+        }
+    }
+
+    private func runAutomaticBackupNow(quiet: Bool) {
+        if isAutomaticBackupRunning {
+            pendingAutomaticBackupAfterCurrent = true
+            return
+        }
+        automaticBackupTask?.cancel()
+        let snapshot = records
+        let coverageDate = (userDefaults.object(forKey: lastVaultChangeAtDefaultsKey) as? Date) ?? Date()
+        automaticBackupTask = Task { [weak self] in
+            await self?.performAutomaticBackup(records: snapshot, coveringChangesThrough: coverageDate, quiet: quiet)
+        }
+    }
+
+    private func performAutomaticBackup(records: [CredentialRecord], coveringChangesThrough coverageDate: Date, quiet: Bool) async {
+        guard backupConfigurationStore.isConfigured() else {
+            return
+        }
+
+        do {
+            let password = try backupConfigurationStore.loadPassword()
+            let destination = try backupConfigurationStore.loadDestination()
+            isAutomaticBackupRunning = true
+            automaticBackupErrorMessage = nil
+
+            let backupData = try await Task.detached(priority: .utility) {
+                try BackupService().export(records: records, password: password)
+            }.value
+
+            try writeAutomaticBackup(backupData, to: destination.url)
+            markBackupCompleted(at: coverageDate)
+            isAutomaticBackupRunning = false
+            if !quiet {
+                statusMessage = "Automatic backup updated."
+            }
+            runPendingAutomaticBackupIfNeeded(after: coverageDate)
+        } catch {
+            isAutomaticBackupRunning = false
+            automaticBackupErrorMessage = error.localizedDescription
+            if !quiet {
+                errorMessage = error.localizedDescription
+            }
+        }
+    }
+
+    private func runPendingAutomaticBackupIfNeeded(after coverageDate: Date) {
+        let latestChangeAt = userDefaults.object(forKey: lastVaultChangeAtDefaultsKey) as? Date
+        let needsAnotherBackup = pendingAutomaticBackupAfterCurrent || latestChangeAt.map { $0 > coverageDate } == true
+        pendingAutomaticBackupAfterCurrent = false
+        if needsAnotherBackup {
+            scheduleAutomaticBackup()
+        }
+    }
+
+    private func writeAutomaticBackup(_ data: Data, to url: URL) throws {
+        let didAccess = url.startAccessingSecurityScopedResource()
+        defer {
+            if didAccess {
+                url.stopAccessingSecurityScopedResource()
+            }
+        }
+
+        let directory = url.deletingLastPathComponent()
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+
+        if FileManager.default.fileExists(atPath: url.path) {
+            let previousURL = previousBackupURL(for: url)
+            try? FileManager.default.removeItem(at: previousURL)
+            try? FileManager.default.copyItem(at: url, to: previousURL)
+        }
+
+        try data.write(to: url, options: [.atomic])
+    }
+
+    private func previousBackupURL(for url: URL) -> URL {
+        let baseName = url.deletingPathExtension().lastPathComponent
+        let pathExtension = url.pathExtension
+        let previousName = pathExtension.isEmpty ? "\(baseName).previous" : "\(baseName).previous.\(pathExtension)"
+        return url.deletingLastPathComponent().appendingPathComponent(previousName)
     }
 
     private func chooseBackupExportURL() -> URL? {
         let panel = NSSavePanel()
         panel.title = "Export Encrypted VPass Backup"
         panel.nameFieldStringValue = defaultBackupFilename()
+        if let backupType = UTType(filenameExtension: "vpassbackup") {
+            panel.allowedContentTypes = [backupType]
+        }
+        panel.canCreateDirectories = true
+        return panel.runModal() == .OK ? panel.url : nil
+    }
+
+    private func chooseAutomaticBackupURL() -> URL? {
+        let panel = NSSavePanel()
+        panel.title = "Set Up Automatic VPass Backup"
+        panel.nameFieldStringValue = "VPass.vpassbackup"
         if let backupType = UTType(filenameExtension: "vpassbackup") {
             panel.allowedContentTypes = [backupType]
         }
@@ -331,6 +510,16 @@ final class VaultViewModel: ObservableObject {
         return alert.runModal() == .alertFirstButtonReturn
     }
 
+    private func confirmDisableAutomaticBackup() -> Bool {
+        let alert = NSAlert()
+        alert.messageText = "Disable Automatic Backup?"
+        alert.informativeText = "VPass will forget the saved backup location and remove the backup master password from Keychain. Existing backup files will not be deleted."
+        alert.alertStyle = .warning
+        alert.addButton(withTitle: "Disable")
+        alert.addButton(withTitle: "Cancel")
+        return alert.runModal() == .alertFirstButtonReturn
+    }
+
     private func showInfo(title: String, message: String) {
         let alert = NSAlert()
         alert.messageText = title
@@ -359,39 +548,88 @@ private enum BackupPromptError: LocalizedError {
 }
 
 struct BackupHealth: Equatable {
+    enum Status: Equatable {
+        case current
+        case setupNeeded
+        case pending
+        case running
+        case failed(String)
+    }
+
     let recordCount: Int
     let changedRecordCount: Int
     let lastBackupAt: Date?
     let lastVaultChangeAt: Date?
+    let isConfigured: Bool
+    let isRunning: Bool
+    let errorMessage: String?
+    let destinationName: String?
 
-    var needsAttention: Bool {
+    var status: Status {
         guard recordCount > 0 else {
-            return false
+            return .current
+        }
+        if let errorMessage {
+            return .failed(errorMessage)
+        }
+        if isRunning {
+            return .running
+        }
+        guard isConfigured else {
+            return .setupNeeded
         }
         guard let lastBackupAt else {
-            return true
+            return .pending
         }
         guard let lastVaultChangeAt else {
-            return false
+            return .current
         }
-        return lastVaultChangeAt > lastBackupAt
+        return lastVaultChangeAt > lastBackupAt ? .pending : .current
+    }
+
+    var needsAttention: Bool {
+        switch status {
+        case .current:
+            return false
+        case .setupNeeded, .pending, .running, .failed:
+            return true
+        }
     }
 
     var title: String {
-        lastBackupAt == nil ? "No backup yet" : "Backup recommended"
+        switch status {
+        case .current:
+            return "Backup current"
+        case .setupNeeded:
+            return "Set up automatic backup"
+        case .pending:
+            return "Backup pending"
+        case .running:
+            return "Backing up"
+        case .failed:
+            return "Backup failed"
+        }
     }
 
     var message: String {
-        if lastBackupAt == nil {
-            return "Export an encrypted backup to protect your passwords and TOTP secrets."
+        switch status {
+        case .setupNeeded:
+            return "Choose one encrypted backup file that VPass keeps updated."
+        case .failed(let message):
+            return message
+        case .running:
+            return destinationName.map { "Updating \($0)." } ?? "Updating automatic backup."
+        case .current:
+            return lastBackupText
+        case .pending:
+            if changedRecordCount == 1 {
+                return "1 credential changed since your last backup."
+            }
+            if changedRecordCount > 1 {
+                return "\(changedRecordCount) credentials changed since your last backup."
+            }
+            return "Your vault changed since your last backup."
         }
-        if changedRecordCount == 1 {
-            return "1 credential changed since your last backup."
-        }
-        if changedRecordCount > 1 {
-            return "\(changedRecordCount) credentials changed since your last backup."
-        }
-        return "Your vault changed since your last backup."
     }
 
     var lastBackupText: String {
@@ -399,6 +637,39 @@ struct BackupHealth: Equatable {
             return "Never backed up"
         }
         return "Last backup \(lastBackupAt.formatted(date: .abbreviated, time: .shortened))"
+    }
+
+    var detailText: String {
+        if let destinationName {
+            return destinationName
+        }
+        return lastBackupText
+    }
+
+    var actionTitle: String {
+        switch status {
+        case .setupNeeded:
+            return "Set Up"
+        case .failed:
+            return "Retry"
+        case .pending:
+            return "Back Up"
+        case .running, .current:
+            return ""
+        }
+    }
+
+    var actionSystemImage: String {
+        switch status {
+        case .setupNeeded:
+            return "gearshape"
+        case .failed:
+            return "arrow.clockwise"
+        case .pending:
+            return "square.and.arrow.up"
+        case .running, .current:
+            return "checkmark"
+        }
     }
 }
 

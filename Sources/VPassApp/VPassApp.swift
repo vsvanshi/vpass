@@ -18,6 +18,17 @@ struct VPassApp: App {
                 .keyboardShortcut("n", modifiers: .command)
             }
             CommandGroup(after: .newItem) {
+                Button("Set Up Automatic Backup...") {
+                    viewModel.setUpAutomaticBackup()
+                }
+
+                Button("Disable Automatic Backup") {
+                    viewModel.disableAutomaticBackup()
+                }
+                .disabled(!viewModel.isAutomaticBackupConfigured)
+
+                Divider()
+
                 Button("Export Encrypted Backup...") {
                     viewModel.exportEncryptedBackup()
                 }

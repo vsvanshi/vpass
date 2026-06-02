@@ -1,6 +1,6 @@
 import Foundation
 
-struct CredentialRecord: Identifiable, Codable, Equatable {
+struct CredentialRecord: Identifiable, Codable, Equatable, Sendable {
     var id: UUID
     var tag: String
     var groupName: String
@@ -136,7 +136,7 @@ private extension String {
     }
 }
 
-struct VaultTag: Identifiable, Equatable {
+struct VaultTag: Identifiable, Equatable, Sendable {
     var id: String { name }
     let name: String
     let systemImage: String
@@ -148,7 +148,7 @@ struct VaultTag: Identifiable, Equatable {
     static let all: [VaultTag] = [.personal, .work, .finance, .servers]
 }
 
-struct CustomField: Identifiable, Codable, Equatable {
+struct CustomField: Identifiable, Codable, Equatable, Sendable {
     var id: UUID
     var key: String
     var value: String
@@ -162,7 +162,7 @@ struct CustomField: Identifiable, Codable, Equatable {
     }
 }
 
-struct CredentialDraft: Identifiable, Equatable {
+struct CredentialDraft: Identifiable, Equatable, Sendable {
     var id: UUID
     var tag: String
     var groupName: String

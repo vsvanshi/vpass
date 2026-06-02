@@ -67,7 +67,14 @@ struct ContentView: View {
                 VStack(spacing: 8) {
                     if viewModel.backupHealth.needsAttention {
                         BackupHealthRow(health: viewModel.backupHealth) {
-                            viewModel.exportEncryptedBackup()
+                            switch viewModel.backupHealth.status {
+                            case .setupNeeded:
+                                viewModel.setUpAutomaticBackup()
+                            case .pending, .failed:
+                                viewModel.retryAutomaticBackup()
+                            case .current, .running:
+                                break
+                            }
                         }
                     }
 
@@ -146,20 +153,21 @@ private struct BackupHealthRow: View {
 
             Spacer(minLength: 8)
 
-            Text(health.lastBackupText)
+            Text(health.detailText)
                 .font(.caption2)
                 .foregroundStyle(.tertiary)
                 .lineLimit(1)
                 .minimumScaleFactor(0.85)
 
-            Button {
-                exportAction()
-            } label: {
-                Label("Export Backup", systemImage: "square.and.arrow.up")
-                    .labelStyle(.iconOnly)
+            if !health.actionTitle.isEmpty {
+                Button {
+                    exportAction()
+                } label: {
+                    Label(health.actionTitle, systemImage: health.actionSystemImage)
+                }
+                .buttonStyle(.borderless)
+                .help(health.actionTitle)
             }
-            .buttonStyle(.borderless)
-            .help("Export encrypted backup")
         }
         .padding(.horizontal, 10)
         .padding(.vertical, 8)
