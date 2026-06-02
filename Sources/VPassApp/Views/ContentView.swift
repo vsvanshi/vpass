@@ -171,27 +171,37 @@ private struct SettingsView: View {
                 SettingsInfoRow(title: "Previous backup", value: viewModel.backupHealth.previousBackupText)
                 SettingsInfoRow(title: "Pending changes", value: pendingChangesText)
 
-                HStack(spacing: 10) {
-                    Button {
-                        viewModel.backUpNow()
-                    } label: {
-                        Label("Back Up Now", systemImage: "externaldrive.badge.plus")
-                    }
-                    .disabled(viewModel.isAutomaticBackupRunning)
+                VStack(alignment: .leading, spacing: 10) {
+                    HStack(spacing: 10) {
+                        Button {
+                            viewModel.backUpNow()
+                        } label: {
+                            Label("Back Up Now", systemImage: "externaldrive.badge.plus")
+                        }
+                        .disabled(viewModel.isAutomaticBackupRunning)
 
-                    Button {
-                        viewModel.restoreCurrentBackup()
-                    } label: {
-                        Label("Restore Latest", systemImage: "arrow.down.doc")
+                        Button {
+                            viewModel.exportEncryptedBackup()
+                        } label: {
+                            Label("Export File", systemImage: "square.and.arrow.up")
+                        }
                     }
-                    .disabled(!viewModel.backupHealth.hasCurrentBackup)
 
-                    Button {
-                        viewModel.restorePreviousBackup()
-                    } label: {
-                        Label("Restore Previous", systemImage: "clock.arrow.circlepath")
+                    HStack(spacing: 10) {
+                        Button {
+                            viewModel.restoreCurrentBackup()
+                        } label: {
+                            Label("Restore Latest", systemImage: "arrow.down.doc")
+                        }
+                        .disabled(!viewModel.backupHealth.hasCurrentBackup)
+
+                        Button {
+                            viewModel.restorePreviousBackup()
+                        } label: {
+                            Label("Restore Previous", systemImage: "clock.arrow.circlepath")
+                        }
+                        .disabled(!viewModel.backupHealth.hasPreviousBackup)
                     }
-                    .disabled(!viewModel.backupHealth.hasPreviousBackup)
                 }
 
                 Divider()

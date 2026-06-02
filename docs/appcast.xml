@@ -6,16 +6,17 @@
         <description>Appcast feed for VPass macOS updates.</description>
         <language>en</language>
         <item>
-            <title>0.0.3</title>
-            <pubDate>Tue, 02 Jun 2026 13:14:41 +0530</pubDate>
+            <title>1.0.0</title>
+            <pubDate>Tue, 02 Jun 2026 13:40:55 +0530</pubDate>
             <link>https://github.com/vsvanshi/vpass</link>
-            <sparkle:version>3</sparkle:version>
-            <sparkle:shortVersionString>0.0.3</sparkle:shortVersionString>
+            <sparkle:version>4</sparkle:version>
+            <sparkle:shortVersionString>1.0.0</sparkle:shortVersionString>
             <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
-            <enclosure url="https://github.com/vsvanshi/vpass/releases/download/v0.0.3/VPass-0.0.3.dmg" length="4645995" type="application/octet-stream" sparkle:edSignature="dHm8mc8xmmDkUIloNzQqnFL6fcPFpkWnhPJwlnXc2JSAk3+aiyQW/aQhYeba2ConJhHmTSPRQeoyvJvomOx0BQ=="/>
+            <enclosure url="https://github.com/vsvanshi/vpass/releases/download/v1.0.0/VPass-1.0.0.dmg" length="4655781" type="application/octet-stream" sparkle:edSignature="uScdArxkbnwbYI6uYVJxRqMQtW2lZgAJRKEi2u4guEuniJ6nGRsbgXWeoTxCO7Xqc1lpKFM7Yk/WwVQ3oSogCg=="/>
             <sparkle:deltas>
-                <enclosure url="https://github.com/vsvanshi/vpass/releases/download/v0.0.3/VPass3-2.delta" sparkle:deltaFrom="2" length="163822" type="application/octet-stream" sparkle:deltaFromSparkleExecutableSize="977808" sparkle:deltaFromSparkleLocales="de,he,ar,el,ja,fa,uk" sparkle:edSignature="bq6tr/wLjNgIXDzokGPZNi7yY105DnhuxjRdiJkHuQ1xfB4sFda6MK83SxHxhu3zECKsyjzX1BSOVxBm9EGTDg=="/>
-                <enclosure url="https://github.com/vsvanshi/vpass/releases/download/v0.0.3/VPass3-1.delta" sparkle:deltaFrom="1" length="176846" type="application/octet-stream" sparkle:deltaFromSparkleExecutableSize="977808" sparkle:deltaFromSparkleLocales="de,he,ar,el,ja,fa,uk" sparkle:edSignature="2BUPNPYIw9Kp/+waBGGS+neEAFy7F3pofnes5gEMba96zi1fdJ5eyhx5YAXiCSH0PK5raPhgJgcanT1CwV08BQ=="/>
+                <enclosure url="https://github.com/vsvanshi/vpass/releases/download/v1.0.0/VPass4-3.delta" sparkle:deltaFrom="3" length="105450" type="application/octet-stream" sparkle:deltaFromSparkleExecutableSize="977808" sparkle:deltaFromSparkleLocales="de,he,ar,el,ja,fa,uk" sparkle:edSignature="qlUZo6aiBXtZeXj/TNU0k9NtUJ2dyhJdqN4Xcnf8OHvbbcSyiN8AN/mcaaeF2GcUe1yLXPxB6lV0Wmb3kYQ9Dw=="/>
+                <enclosure url="https://github.com/vsvanshi/vpass/releases/download/v1.0.0/VPass4-2.delta" sparkle:deltaFrom="2" length="178982" type="application/octet-stream" sparkle:deltaFromSparkleExecutableSize="977808" sparkle:deltaFromSparkleLocales="de,he,ar,el,ja,fa,uk" sparkle:edSignature="HaR7BsHapBc7e5qVKJkcrhUczkCknKaS5cus8sJkldnLhTblfM0bQspYu3BlUPdZH31WHFnfKmH947/J3IrADw=="/>
+                <enclosure url="https://github.com/vsvanshi/vpass/releases/download/v1.0.0/VPass4-1.delta" sparkle:deltaFrom="1" length="191386" type="application/octet-stream" sparkle:deltaFromSparkleExecutableSize="977808" sparkle:deltaFromSparkleLocales="de,he,ar,el,ja,fa,uk" sparkle:edSignature="u37Zi+Opn+UhlCZPXRi9arqg6MoDMmj+JRzNwBshmeDgbhOIzQmn58lo8FHxQW+vY3zkJyHAO9IcMKmOwUkmAw=="/>
             </sparkle:deltas>
         </item>
     </channel>
