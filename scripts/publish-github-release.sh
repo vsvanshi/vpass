@@ -7,6 +7,7 @@ TAG="${TAG:-v$VERSION}"
 DMG="$ROOT/Releases/GitHub/$VERSION/VPass-$VERSION.dmg"
 NOTES_FILE="$ROOT/Releases/Appcast/VPass-$VERSION.dmg.md"
 ASSETS=("$DMG")
+INCLUDE_DELTAS="${INCLUDE_DELTAS:-1}"
 
 cd "$ROOT"
 
@@ -24,10 +25,12 @@ git diff --quiet -- docs/appcast.xml || {
 git rev-parse "$TAG" >/dev/null 2>&1 || git tag -a "$TAG" -m "VPass $VERSION"
 git push origin "$TAG"
 
-for delta in "$ROOT"/Releases/Appcast/*.delta; do
-  [[ -f "$delta" ]] || continue
-  ASSETS+=("$delta")
-done
+if [[ "$INCLUDE_DELTAS" == "1" ]]; then
+  for delta in "$ROOT"/Releases/Appcast/*.delta; do
+    [[ -f "$delta" ]] || continue
+    ASSETS+=("$delta")
+  done
+fi
 
 RELEASE_ARGS=(
   "$TAG"

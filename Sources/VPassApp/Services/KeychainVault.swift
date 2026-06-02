@@ -368,15 +368,7 @@ final class KeychainVault {
             return sharedGroup
         }
 
-        guard let applicationIdentifier = SecTaskCopyValueForEntitlement(
-            task,
-            "application-identifier" as CFString,
-            nil
-        ) as? String,
-              let teamID = applicationIdentifier.split(separator: ".").first else {
-            return nil
-        }
-        return "\(teamID).com.varunsuryawanshi.vpass.shared"
+        return nil
     }
 }
 

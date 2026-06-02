@@ -148,14 +148,6 @@ final class TOTPKeychainSyncStore {
             return sharedGroup
         }
 
-        guard let applicationIdentifier = SecTaskCopyValueForEntitlement(
-            task,
-            "application-identifier" as CFString,
-            nil
-        ) as? String,
-              let teamID = applicationIdentifier.split(separator: ".").first else {
-            return nil
-        }
-        return "\(teamID).\(sharedAccessGroupIdentifier)"
+        return nil
     }
 }

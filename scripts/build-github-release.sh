@@ -35,6 +35,8 @@ DOWNLOAD_URL_PREFIX="${DOWNLOAD_URL_PREFIX:-https://github.com/vsvanshi/vpass/re
 SIGNING_IDENTITY="${SIGNING_IDENTITY:-Developer ID Application}"
 APP_IDENTIFIER_PREFIX="${APP_IDENTIFIER_PREFIX:-X937FCYW2Y.}"
 PROCESSED_ENTITLEMENTS="$DIST_DIR/VPass.entitlements"
+MAXIMUM_DELTAS="${MAXIMUM_DELTAS:-5}"
+RELEASE_ENTITLEMENTS="${RELEASE_ENTITLEMENTS:-$ROOT/AppStore/VPassDeveloperID.entitlements}"
 
 echo "Building VPass $VERSION ($BUILD)"
 rm -rf "$DIST_DIR"
@@ -60,7 +62,7 @@ ditto "$BUILT_APP" "$WORK_APP"
 sed \
   -e "s/\$(PRODUCT_BUNDLE_IDENTIFIER)/com.varunsuryawanshi.vpass/g" \
   -e "s/\$(AppIdentifierPrefix)/$APP_IDENTIFIER_PREFIX/g" \
-  "$ROOT/AppStore/VPass.entitlements" > "$PROCESSED_ENTITLEMENTS"
+  "$RELEASE_ENTITLEMENTS" > "$PROCESSED_ENTITLEMENTS"
 
 if [[ -d "$WORK_APP/Contents/Frameworks/Sparkle.framework" ]]; then
   SPARKLE_FRAMEWORK="$WORK_APP/Contents/Frameworks/Sparkle.framework"
@@ -170,6 +172,7 @@ fi
   --download-url-prefix "$DOWNLOAD_URL_PREFIX" \
   --link "https://github.com/vsvanshi/vpass" \
   --maximum-versions 1 \
+  --maximum-deltas "$MAXIMUM_DELTAS" \
   -o "$ROOT/docs/appcast.xml" \
   "$APPCAST_DIR"
 
