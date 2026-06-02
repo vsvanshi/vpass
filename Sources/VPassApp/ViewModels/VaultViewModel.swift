@@ -16,6 +16,8 @@ final class VaultViewModel: ObservableObject {
     private let backupService = BackupService()
     private let userDefaults: UserDefaults
     private let selectedTagDefaultsKey = "selectedTag"
+    private let lastBackupAtDefaultsKey = "lastBackupAt"
+    private let lastVaultChangeAtDefaultsKey = "lastVaultChangeAt"
 
     init(vault: KeychainVault, userDefaults: UserDefaults = .standard) {
         self.vault = vault
@@ -52,6 +54,26 @@ final class VaultViewModel: ObservableObject {
             Array(Set(records.map { $0.groupName.isEmpty ? "General" : $0.groupName }))
                 .sorted { $0.localizedCaseInsensitiveCompare($1) == .orderedAscending }
         }
+    }
+
+    var backupHealth: BackupHealth {
+        let lastBackupAt = userDefaults.object(forKey: lastBackupAtDefaultsKey) as? Date
+        let lastVaultChangeAt = userDefaults.object(forKey: lastVaultChangeAtDefaultsKey) as? Date
+        return BackupHealth(
+            recordCount: records.count,
+            changedRecordCount: records.filter { record in
+                guard let lastBackupAt else {
+                    return true
+                }
+                return record.updatedAt > lastBackupAt
+            }.count,
+            lastBackupAt: lastBackupAt,
+            lastVaultChangeAt: lastVaultChangeAt
+        )
+    }
+
+    var selectedTagExpirySummary: ExpirySummary {
+        ExpirySummary(records: selectedTagRecords)
     }
 
     var selectedRecord: CredentialRecord? {
@@ -98,6 +120,7 @@ final class VaultViewModel: ObservableObject {
             setSelectedTag(record.tag, selectFirstRecord: false)
             selectedID = record.id
             reload()
+            markVaultChanged()
             statusMessage = "Saved \(record.title.isEmpty ? "item" : record.title)."
         } catch {
             errorMessage = error.localizedDescription
@@ -112,6 +135,7 @@ final class VaultViewModel: ObservableObject {
             try vault.delete(id: id)
             selectedID = nil
             reload()
+            markVaultChanged()
             statusMessage = "Deleted item."
         } catch {
             errorMessage = error.localizedDescription
@@ -147,6 +171,7 @@ final class VaultViewModel: ObservableObject {
                 return
             }
             try backupData.write(to: destination, options: [.atomic])
+            markBackupCompleted()
             statusMessage = "Exported encrypted backup."
             showInfo(title: "Backup Exported", message: "Your encrypted VPass backup was saved.")
         } catch BackupPromptError.cancelled {
@@ -176,6 +201,8 @@ final class VaultViewModel: ObservableObject {
                 try vault.save(record)
             }
             reload()
+            markVaultChanged()
+            markBackupCompleted()
             statusMessage = "Imported \(importedRecords.count) credential\(importedRecords.count == 1 ? "" : "s")."
             showInfo(
                 title: "Backup Imported",
@@ -197,6 +224,15 @@ final class VaultViewModel: ObservableObject {
         if selectFirstRecord {
             selectedID = filteredRecords.first?.id
         }
+    }
+
+    private func markVaultChanged(at date: Date = Date()) {
+        userDefaults.set(date, forKey: lastVaultChangeAtDefaultsKey)
+    }
+
+    private func markBackupCompleted(at date: Date = Date()) {
+        userDefaults.set(date, forKey: lastBackupAtDefaultsKey)
+        userDefaults.set(date, forKey: lastVaultChangeAtDefaultsKey)
     }
 
     private func chooseBackupExportURL() -> URL? {
@@ -319,5 +355,84 @@ private enum BackupPromptError: LocalizedError {
         case .passwordsDoNotMatch:
             return "The backup passwords do not match."
         }
+    }
+}
+
+struct BackupHealth: Equatable {
+    let recordCount: Int
+    let changedRecordCount: Int
+    let lastBackupAt: Date?
+    let lastVaultChangeAt: Date?
+
+    var needsAttention: Bool {
+        guard recordCount > 0 else {
+            return false
+        }
+        guard let lastBackupAt else {
+            return true
+        }
+        guard let lastVaultChangeAt else {
+            return false
+        }
+        return lastVaultChangeAt > lastBackupAt
+    }
+
+    var title: String {
+        lastBackupAt == nil ? "No backup yet" : "Backup recommended"
+    }
+
+    var message: String {
+        if lastBackupAt == nil {
+            return "Export an encrypted backup to protect your passwords and TOTP secrets."
+        }
+        if changedRecordCount == 1 {
+            return "1 credential changed since your last backup."
+        }
+        if changedRecordCount > 1 {
+            return "\(changedRecordCount) credentials changed since your last backup."
+        }
+        return "Your vault changed since your last backup."
+    }
+
+    var lastBackupText: String {
+        guard let lastBackupAt else {
+            return "Never backed up"
+        }
+        return "Last backup \(lastBackupAt.formatted(date: .abbreviated, time: .shortened))"
+    }
+}
+
+struct ExpirySummary: Equatable {
+    let total: Int
+    let expired: Int
+    let expiringSoon: Int
+    let withoutExpiry: Int
+
+    init(records: [CredentialRecord], now: Date = Date(), calendar: Calendar = .current) {
+        total = records.count
+        let today = calendar.startOfDay(for: now)
+        let soonLimit = calendar.date(byAdding: .day, value: 30, to: today) ?? today
+
+        var expiredCount = 0
+        var expiringSoonCount = 0
+        var noExpiryCount = 0
+
+        for record in records {
+            guard let expiresAt = record.expiresAt else {
+                noExpiryCount += 1
+                continue
+            }
+
+            let expiryDay = calendar.startOfDay(for: expiresAt)
+            if expiryDay < today {
+                expiredCount += 1
+            } else if expiryDay <= soonLimit {
+                expiringSoonCount += 1
+            }
+        }
+
+        expired = expiredCount
+        expiringSoon = expiringSoonCount
+        withoutExpiry = noExpiryCount
     }
 }

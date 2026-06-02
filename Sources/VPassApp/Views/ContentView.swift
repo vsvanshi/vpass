@@ -62,32 +62,52 @@ struct ContentView: View {
     }
 
     private var passwordList: some View {
-        List(selection: $viewModel.selectedID) {
-            ForEach(viewModel.groupedRecords, id: \.group) { group in
-                Section {
-                    ForEach(group.records) { record in
-                        CredentialListRow(record: record)
-                            .tag(record.id)
+        VStack(spacing: 0) {
+            if viewModel.backupHealth.needsAttention || !viewModel.selectedTagRecords.isEmpty {
+                VStack(spacing: 8) {
+                    if viewModel.backupHealth.needsAttention {
+                        BackupHealthRow(health: viewModel.backupHealth) {
+                            viewModel.exportEncryptedBackup()
+                        }
                     }
-                } header: {
-                    HStack {
-                        Text(group.group)
-                        Spacer()
-                        Text("\(group.records.count)")
-                            .monospacedDigit()
+
+                    if !viewModel.selectedTagRecords.isEmpty {
+                        ExpirySummaryRow(summary: viewModel.selectedTagExpirySummary)
                     }
+                }
+                .padding(.horizontal, 12)
+                .padding(.vertical, 10)
+
+                Divider()
+            }
+
+            List(selection: $viewModel.selectedID) {
+                ForEach(viewModel.groupedRecords, id: \.group) { group in
+                    Section {
+                        ForEach(group.records) { record in
+                            CredentialListRow(record: record)
+                                .tag(record.id)
+                        }
+                    } header: {
+                        HStack {
+                            Text(group.group)
+                            Spacer()
+                            Text("\(group.records.count)")
+                                .monospacedDigit()
+                        }
+                    }
+                }
+            }
+            .overlay {
+                if viewModel.selectedTagRecords.isEmpty {
+                    ContentUnavailableView("No \(viewModel.selectedTag) Passwords", systemImage: "folder", description: Text("Add your first credential here."))
+                } else if viewModel.filteredRecords.isEmpty {
+                    ContentUnavailableView.search(text: viewModel.searchText)
                 }
             }
         }
         .navigationTitle(viewModel.selectedTag)
         .searchable(text: $viewModel.searchText, placement: .toolbar)
-        .overlay {
-            if viewModel.selectedTagRecords.isEmpty {
-                ContentUnavailableView("No \(viewModel.selectedTag) Passwords", systemImage: "folder", description: Text("Add your first credential here."))
-            } else if viewModel.filteredRecords.isEmpty {
-                ContentUnavailableView.search(text: viewModel.searchText)
-            }
-        }
         .toolbar {
             ToolbarItem {
                 Button {
@@ -98,6 +118,111 @@ struct ContentView: View {
                 .keyboardShortcut("n", modifiers: .command)
             }
         }
+    }
+}
+
+private struct BackupHealthRow: View {
+    let health: BackupHealth
+    let exportAction: () -> Void
+
+    var body: some View {
+        HStack(spacing: 10) {
+            Image(systemName: "externaldrive.badge.icloud")
+                .font(.system(size: 18, weight: .semibold))
+                .foregroundStyle(.orange)
+                .frame(width: 28, height: 28)
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(health.title)
+                    .font(.subheadline.weight(.semibold))
+                    .lineLimit(1)
+                Text(health.message)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+                    .truncationMode(.tail)
+            }
+            .layoutPriority(1)
+
+            Spacer(minLength: 8)
+
+            Text(health.lastBackupText)
+                .font(.caption2)
+                .foregroundStyle(.tertiary)
+                .lineLimit(1)
+                .minimumScaleFactor(0.85)
+
+            Button {
+                exportAction()
+            } label: {
+                Label("Export Backup", systemImage: "square.and.arrow.up")
+                    .labelStyle(.iconOnly)
+            }
+            .buttonStyle(.borderless)
+            .help("Export encrypted backup")
+        }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 8)
+        .background(.orange.opacity(0.10), in: RoundedRectangle(cornerRadius: 8))
+    }
+}
+
+private struct ExpirySummaryRow: View {
+    let summary: ExpirySummary
+
+    var body: some View {
+        HStack(spacing: 8) {
+            ExpiryMetric(
+                title: "Expired",
+                value: summary.expired,
+                systemImage: "exclamationmark.triangle.fill",
+                color: summary.expired > 0 ? .red : .secondary
+            )
+            ExpiryMetric(
+                title: "Next 30d",
+                value: summary.expiringSoon,
+                systemImage: "calendar.badge.clock",
+                color: summary.expiringSoon > 0 ? .orange : .secondary
+            )
+            ExpiryMetric(
+                title: "No expiry",
+                value: summary.withoutExpiry,
+                systemImage: "calendar.badge.minus",
+                color: .secondary
+            )
+        }
+    }
+}
+
+private struct ExpiryMetric: View {
+    let title: String
+    let value: Int
+    let systemImage: String
+    let color: Color
+
+    var body: some View {
+        HStack(spacing: 7) {
+            Image(systemName: systemImage)
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(color)
+                .frame(width: 16)
+
+            Text(title)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+
+            Spacer(minLength: 4)
+
+            Text("\(value)")
+                .font(.caption.weight(.semibold))
+                .monospacedDigit()
+                .foregroundStyle(color)
+        }
+        .padding(.horizontal, 9)
+        .padding(.vertical, 6)
+        .frame(maxWidth: .infinity)
+        .background(.quaternary.opacity(0.45), in: RoundedRectangle(cornerRadius: 8))
     }
 }
 
