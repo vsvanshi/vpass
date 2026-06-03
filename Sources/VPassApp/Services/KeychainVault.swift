@@ -115,6 +115,10 @@ final class KeychainVault {
         }
     }
 
+    func loadLocalOnlyRecordsForRecovery() throws -> [CredentialRecord] {
+        try loadLocalVaultRecords(allowsAuthentication: true)
+    }
+
     private func loadSharedRecords() throws -> [CredentialRecord] {
         let deletionMarkers = try loadDeletionMarkers()
         let records = try loadSharedAccounts().compactMap { account in
@@ -327,12 +331,15 @@ final class KeychainVault {
         ]
     }
 
-    private func localVaultBaseQuery() -> [String: Any] {
-        [
+    private func localVaultBaseQuery(allowsAuthentication: Bool = false) -> [String: Any] {
+        var query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
-            kSecAttrService as String: service,
-            kSecUseAuthenticationContext as String: nonInteractiveKeychainContext()
+            kSecAttrService as String: service
         ]
+        if !allowsAuthentication {
+            query[kSecUseAuthenticationContext as String] = nonInteractiveKeychainContext()
+        }
+        return query
     }
 
     private func nonInteractiveKeychainContext() -> LAContext {
@@ -341,8 +348,8 @@ final class KeychainVault {
         return context
     }
 
-    private func localVaultItemQuery(account: String) -> [String: Any] {
-        var query = localVaultBaseQuery()
+    private func localVaultItemQuery(account: String, allowsAuthentication: Bool = false) -> [String: Any] {
+        var query = localVaultBaseQuery(allowsAuthentication: allowsAuthentication)
         query[kSecAttrAccount as String] = account
         return query
     }
@@ -360,14 +367,14 @@ final class KeychainVault {
         }
     }
 
-    private func loadLocalVaultRecords() throws -> [CredentialRecord] {
-        try loadLocalVaultAccounts().compactMap { account in
-            try? loadLocalVaultRecord(account: account)
+    private func loadLocalVaultRecords(allowsAuthentication: Bool = false) throws -> [CredentialRecord] {
+        try loadLocalVaultAccounts(allowsAuthentication: allowsAuthentication).compactMap { account in
+            try? loadLocalVaultRecord(account: account, allowsAuthentication: allowsAuthentication)
         }
     }
 
-    private func loadLocalVaultAccounts() throws -> [String] {
-        var query = localVaultBaseQuery()
+    private func loadLocalVaultAccounts(allowsAuthentication: Bool = false) throws -> [String] {
+        var query = localVaultBaseQuery(allowsAuthentication: allowsAuthentication)
         query[kSecReturnAttributes as String] = true
         query[kSecMatchLimit as String] = kSecMatchLimitAll
 
@@ -389,8 +396,8 @@ final class KeychainVault {
         return items.compactMap { $0[kSecAttrAccount as String] as? String }
     }
 
-    private func loadLocalVaultRecord(account: String) throws -> CredentialRecord {
-        var query = localVaultItemQuery(account: account)
+    private func loadLocalVaultRecord(account: String, allowsAuthentication: Bool = false) throws -> CredentialRecord {
+        var query = localVaultItemQuery(account: account, allowsAuthentication: allowsAuthentication)
         query[kSecReturnData as String] = true
         query[kSecMatchLimit as String] = kSecMatchLimitOne
 

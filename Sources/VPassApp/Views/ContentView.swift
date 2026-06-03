@@ -356,6 +356,14 @@ private struct SettingsView: View {
             Text(viewModel.isCloudKeychainSyncAvailable ? "Credentials and authenticator secrets are stored in your shared iCloud Keychain access group for VPass on Mac and iPhone." : "The GitHub Developer ID build is local-only until it is signed with a shared keychain provisioning profile.")
                 .font(.caption)
                 .foregroundStyle(.secondary)
+
+            Button {
+                viewModel.recoverLocalOnlyCredentials()
+            } label: {
+                Label("Recover Local Items", systemImage: "arrow.down.key")
+            }
+            .disabled(!viewModel.isCloudKeychainSyncAvailable)
+            .help("Recover older local-only credentials and TOTP secrets into the shared iCloud vault")
         }
         .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)

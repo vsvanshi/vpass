@@ -322,6 +322,70 @@ final class VaultViewModel: ObservableObject {
         }
     }
 
+    func recoverLocalOnlyCredentials() {
+        guard isCloudKeychainSyncAvailable else {
+            errorMessage = "iCloud Keychain sync is unavailable in this build."
+            return
+        }
+        guard confirmRecoverLocalOnlyCredentials() else {
+            return
+        }
+
+        do {
+            let localRecords = try vault.loadLocalOnlyRecordsForRecovery()
+            guard !localRecords.isEmpty else {
+                showInfo(title: "Nothing to Recover", message: "No old local-only VPass credentials were found.")
+                return
+            }
+
+            var currentRecords = records
+            var importedCount = 0
+            var mergedTOTPCount = 0
+
+            for localRecord in localRecords {
+                if localRecord.hasTOTP,
+                   let matchingIndex = currentRecords.firstIndex(where: { $0.matchesRecoveryIdentity(of: localRecord) }),
+                   currentRecords[matchingIndex].totpSecretBase32.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                    var mergedRecord = currentRecords[matchingIndex]
+                    mergedRecord.totpSecretBase32 = localRecord.totpSecretBase32
+                    mergedRecord.totpIssuer = localRecord.totpIssuer
+                    mergedRecord.totpAccount = localRecord.totpAccount
+                    mergedRecord.totpPeriod = localRecord.totpPeriod
+                    mergedRecord.totpDigits = localRecord.totpDigits
+                    mergedRecord.updatedAt = Date()
+                    try vault.save(mergedRecord)
+                    currentRecords[matchingIndex] = mergedRecord
+                    mergedTOTPCount += 1
+                    continue
+                }
+
+                if let existingIndex = currentRecords.firstIndex(where: { $0.id == localRecord.id }) {
+                    guard localRecord.updatedAt > currentRecords[existingIndex].updatedAt else {
+                        continue
+                    }
+                    try vault.save(localRecord)
+                    currentRecords[existingIndex] = localRecord
+                    importedCount += 1
+                    continue
+                }
+
+                try vault.save(localRecord)
+                currentRecords.append(localRecord)
+                importedCount += 1
+            }
+
+            reload()
+            markVaultChanged()
+            syncTOTPIfNeeded()
+
+            let message = "Recovered \(importedCount) credential\(importedCount == 1 ? "" : "s") and merged TOTP into \(mergedTOTPCount) existing credential\(mergedTOTPCount == 1 ? "" : "s")."
+            statusMessage = message
+            showInfo(title: "Recovery Complete", message: message)
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
     func importEncryptedBackup() {
         do {
             guard let source = chooseBackupImportURL() else {
@@ -630,6 +694,16 @@ final class VaultViewModel: ObservableObject {
         return alert.runModal() == .alertFirstButtonReturn
     }
 
+    private func confirmRecoverLocalOnlyCredentials() -> Bool {
+        let alert = NSAlert()
+        alert.messageText = "Recover Local-Only Credentials?"
+        alert.informativeText = "VPass will ask macOS for access to older local-only VPass keychain items, then copy any recovered credentials and TOTP secrets into the shared iCloud Keychain vault. This only runs once when you click Recover."
+        alert.alertStyle = .warning
+        alert.addButton(withTitle: "Recover")
+        alert.addButton(withTitle: "Cancel")
+        return alert.runModal() == .alertFirstButtonReturn
+    }
+
     private func confirmEnableTOTPSync() -> Bool {
         let alert = NSAlert()
         alert.messageText = "Enable iPhone TOTP Sync?"
@@ -784,6 +858,22 @@ private enum ManagedBackupKind {
         case .previous:
             return destination.previousURL
         }
+    }
+}
+
+private extension CredentialRecord {
+    func matchesRecoveryIdentity(of other: CredentialRecord) -> Bool {
+        title.recoveryKey == other.title.recoveryKey
+            && username.recoveryKey == other.username.recoveryKey
+            && !title.recoveryKey.isEmpty
+    }
+}
+
+private extension String {
+    var recoveryKey: String {
+        trimmingCharacters(in: .whitespacesAndNewlines)
+            .folding(options: [.caseInsensitive, .diacriticInsensitive], locale: .current)
+            .lowercased()
     }
 }
 
