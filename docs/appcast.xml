@@ -10,7 +10,7 @@
             <sparkle:shortVersionString>1.0.0</sparkle:shortVersionString>
             <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
             <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
-            <enclosure url="https://github.com/vsvanshi/vpass/releases/download/v1.0.0/VPass-1.0.0.dmg" length="4740596" type="application/octet-stream" sparkle:edSignature="XwRDjr4YqNnlm9Xl8rY5KhBgiVLazYIaz7PNgtyOFSHSK8BTcoue9l8CeT8gsNX7Oqr2KXLpNi9fBDX6nhSODw=="/>
+            <enclosure url="https://github.com/vsvanshi/vpass/releases/download/v1.0.0/VPass-1.0.0.dmg" length="4740957" type="application/octet-stream" sparkle:edSignature="8J/B1mfSmm91le/kCgoGvOQCx79J8QO2K2UN/u/gtzjwJGOEb6To+qRNV52lyNFkUcoNMmegFFZO1UkUTGH6BQ=="/>
         </item>
     </channel>
 </rss>
