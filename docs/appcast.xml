@@ -6,14 +6,14 @@
         <description>Appcast feed for VPass macOS updates.</description>
         <language>en</language>
         <item>
-            <title>1.0.3</title>
-            <pubDate>Wed, 03 Jun 2026 06:10:32 +0530</pubDate>
+            <title>1.0.4</title>
+            <pubDate>Wed, 03 Jun 2026 09:32:38 +0530</pubDate>
             <link>https://github.com/vsvanshi/vpass</link>
-            <sparkle:version>7</sparkle:version>
-            <sparkle:shortVersionString>1.0.3</sparkle:shortVersionString>
+            <sparkle:version>8</sparkle:version>
+            <sparkle:shortVersionString>1.0.4</sparkle:shortVersionString>
             <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
             <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
-            <enclosure url="https://github.com/vsvanshi/vpass/releases/download/v1.0.3/VPass-1.0.3.dmg" length="4739682" type="application/octet-stream" sparkle:edSignature="4UWmjP8+pKtMWiqjzECKZDDNm5CdWI4YOfI1T2rTZKDeBS/5Iq1Gd7b3tTa68j3nWD8ga42ePjQgFyR33UxoCA=="/>
+            <enclosure url="https://github.com/vsvanshi/vpass/releases/download/v1.0.4/VPass-1.0.4.dmg" length="4752015" type="application/octet-stream" sparkle:edSignature="1maoD61FUaeQKMLz0Xbs34KjjL9ipfJ88hPlKSF70ypQ0tVaC08erk4nLpdY/RB8ym06DSqpmoazxg6DjedYDg=="/>
         </item>
     </channel>
 </rss>
