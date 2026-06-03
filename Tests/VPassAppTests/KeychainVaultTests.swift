@@ -10,7 +10,14 @@ final class KeychainVaultTests: XCTestCase {
             defaults.removePersistentDomain(forName: suiteName)
         }
 
-        let vault = KeychainVault(userDefaults: defaults, accessGroup: nil, synchronizesWithiCloud: false)
+        let service = "VPassAppTests.shared-vault.\(UUID().uuidString)"
+        let vault = KeychainVault(
+            userDefaults: defaults,
+            accessGroup: nil,
+            synchronizesWithiCloud: false,
+            service: service,
+            deletionService: "\(service).deleted"
+        )
         let record = CredentialRecord(
             id: UUID(),
             tag: VaultTag.work.name,

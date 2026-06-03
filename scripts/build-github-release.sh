@@ -37,6 +37,7 @@ APP_IDENTIFIER_PREFIX="${APP_IDENTIFIER_PREFIX:-X937FCYW2Y.}"
 PROCESSED_ENTITLEMENTS="$DIST_DIR/VPass.entitlements"
 MAXIMUM_DELTAS="${MAXIMUM_DELTAS:-5}"
 RELEASE_ENTITLEMENTS="${RELEASE_ENTITLEMENTS:-$ROOT/AppStore/VPassDeveloperID.entitlements}"
+EMBEDDED_PROVISIONING_PROFILE="${EMBEDDED_PROVISIONING_PROFILE:-}"
 
 echo "Building VPass $VERSION ($BUILD)"
 rm -rf "$DIST_DIR"
@@ -59,9 +60,18 @@ BUILT_PRODUCTS_DIR="$(
 BUILT_APP="$BUILT_PRODUCTS_DIR/VPass.app"
 
 ditto "$BUILT_APP" "$WORK_APP"
+if [[ -n "$EMBEDDED_PROVISIONING_PROFILE" ]]; then
+  if [[ ! -f "$EMBEDDED_PROVISIONING_PROFILE" ]]; then
+    echo "Missing provisioning profile: $EMBEDDED_PROVISIONING_PROFILE" >&2
+    exit 1
+  fi
+  cp "$EMBEDDED_PROVISIONING_PROFILE" "$WORK_APP/Contents/embedded.provisionprofile"
+fi
 sed \
   -e "s/\$(PRODUCT_BUNDLE_IDENTIFIER)/com.varunsuryawanshi.vpass/g" \
   -e "s/\$(AppIdentifierPrefix)/$APP_IDENTIFIER_PREFIX/g" \
+  -e "s/\$(TeamIdentifierPrefix)/$APP_IDENTIFIER_PREFIX/g" \
+  -e "s/\$(EXECUTABLE_NAME)/VPass/g" \
   "$RELEASE_ENTITLEMENTS" > "$PROCESSED_ENTITLEMENTS"
 
 if [[ -d "$WORK_APP/Contents/Frameworks/Sparkle.framework" ]]; then

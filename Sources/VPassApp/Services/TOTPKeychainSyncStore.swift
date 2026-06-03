@@ -30,8 +30,12 @@ final class TOTPKeychainSyncStore {
         encoder.dateEncodingStrategy = .iso8601
     }
 
+    var isAvailable: Bool {
+        accessGroup != nil
+    }
+
     func sync(records: [CredentialRecord]) throws {
-        guard accessGroup != nil else {
+        guard isAvailable else {
             return
         }
         let syncedRecords = records.compactMap(SyncedTOTPRecord.init)
@@ -48,7 +52,7 @@ final class TOTPKeychainSyncStore {
     }
 
     func clear() throws {
-        guard accessGroup != nil else {
+        guard isAvailable else {
             return
         }
         let status = SecItemDelete(allItemsQuery() as CFDictionary)

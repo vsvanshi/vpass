@@ -119,6 +119,10 @@ final class VaultViewModel: ObservableObject {
         return lastTOTPSyncAt.formatted(date: .abbreviated, time: .shortened)
     }
 
+    var isCloudKeychainSyncAvailable: Bool {
+        vault.isCloudSyncAvailable && totpSyncStore.isAvailable
+    }
+
     var selectedRecord: CredentialRecord? {
         guard let selectedID else {
             return filteredRecords.first
@@ -418,6 +422,10 @@ final class VaultViewModel: ObservableObject {
 
     private func syncTOTPIfNeeded(showSuccess: Bool = true) {
         guard isTOTPSyncEnabled else {
+            return
+        }
+        guard isCloudKeychainSyncAvailable else {
+            totpSyncErrorMessage = "Unavailable in this build. Install a VPass build signed with the shared keychain provisioning profile to sync with iPhone."
             return
         }
 

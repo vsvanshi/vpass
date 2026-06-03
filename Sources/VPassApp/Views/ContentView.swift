@@ -349,11 +349,11 @@ private struct SettingsView: View {
             Label("iCloud Vault Sync", systemImage: "icloud")
                 .font(.headline)
 
-            SettingsInfoRow(title: "Status", value: "Automatic")
+            SettingsInfoRow(title: "Status", value: viewModel.isCloudKeychainSyncAvailable ? "Automatic" : "Unavailable in this build")
             SettingsInfoRow(title: "Credentials", value: "\(viewModel.records.count)")
             SettingsInfoRow(title: "Authenticators", value: "\(viewModel.totpSyncCredentialCount)")
 
-            Text("Credentials and authenticator secrets are stored in your shared iCloud Keychain access group for VPass on Mac and iPhone.")
+            Text(viewModel.isCloudKeychainSyncAvailable ? "Credentials and authenticator secrets are stored in your shared iCloud Keychain access group for VPass on Mac and iPhone." : "The GitHub Developer ID build is local-only until it is signed with a shared keychain provisioning profile.")
                 .font(.caption)
                 .foregroundStyle(.secondary)
         }

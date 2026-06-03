@@ -25,8 +25,8 @@ enum VaultError: LocalizedError {
 }
 
 final class KeychainVault {
-    private let service = "com.varunsuryawanshi.vpass.shared-vault"
-    private let deletionService = "com.varunsuryawanshi.vpass.shared-vault.deleted"
+    private let service: String
+    private let deletionService: String
     private let legacyService = "com.varun.vpass.vault"
     private let legacyIndexKey = "com.varun.vpass.vault.index"
     private let migrationKey = "com.varunsuryawanshi.vpass.shared-vault.migrated"
@@ -39,14 +39,22 @@ final class KeychainVault {
         synchronizesWithiCloud && accessGroup != nil
     }
 
+    var isCloudSyncAvailable: Bool {
+        canUseSharedCloudVault
+    }
+
     init(
         userDefaults: UserDefaults = .standard,
         accessGroup: String? = KeychainVault.defaultAccessGroup(),
-        synchronizesWithiCloud: Bool = true
+        synchronizesWithiCloud: Bool = true,
+        service: String = "com.varunsuryawanshi.vpass.shared-vault",
+        deletionService: String = "com.varunsuryawanshi.vpass.shared-vault.deleted"
     ) {
         self.userDefaults = userDefaults
         self.accessGroup = accessGroup
         self.synchronizesWithiCloud = synchronizesWithiCloud && accessGroup != nil
+        self.service = service
+        self.deletionService = deletionService
         encoder.dateEncodingStrategy = .iso8601
         decoder.dateDecodingStrategy = .iso8601
     }
@@ -107,6 +115,10 @@ final class KeychainVault {
     }
 
     private func loadSharedRecords() throws -> [CredentialRecord] {
+        if canUseSharedCloudVault {
+            try migrateLocalRecordsToCloudVault()
+        }
+
         let deletionMarkers = try loadDeletionMarkers()
         let records = try loadSharedAccounts().compactMap { account in
             try? loadSharedRecord(account: account)
@@ -315,6 +327,98 @@ final class KeychainVault {
             kSecAttrService as String: legacyService,
             kSecAttrAccount as String: account
         ]
+    }
+
+    private func localVaultBaseQuery() -> [String: Any] {
+        [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: service
+        ]
+    }
+
+    private func localVaultItemQuery(account: String) -> [String: Any] {
+        var query = localVaultBaseQuery()
+        query[kSecAttrAccount as String] = account
+        return query
+    }
+
+    private func migrateLocalRecordsToCloudVault() throws {
+        let localRecords = try loadLocalVaultRecords()
+        guard !localRecords.isEmpty else {
+            return
+        }
+
+        let cloudRecords = try loadCloudRecordsWithoutMigration()
+        var merged = Dictionary(uniqueKeysWithValues: cloudRecords.map { ($0.id, $0) })
+
+        for record in localRecords {
+            if let existing = merged[record.id], existing.updatedAt >= record.updatedAt {
+                continue
+            }
+            try save(record)
+            merged[record.id] = record
+        }
+    }
+
+    private func loadCloudRecordsWithoutMigration() throws -> [CredentialRecord] {
+        let deletionMarkers = try loadDeletionMarkers()
+        let records = try loadSharedAccounts().compactMap { account in
+            try? loadSharedRecord(account: account)
+        }
+        return records.filter { record in
+            guard let deletedAt = deletionMarkers[record.id.uuidString] else {
+                return true
+            }
+            return deletedAt < record.updatedAt
+        }
+    }
+
+    private func loadLocalVaultRecords() throws -> [CredentialRecord] {
+        try loadLocalVaultAccounts().compactMap { account in
+            try? loadLocalVaultRecord(account: account)
+        }
+    }
+
+    private func loadLocalVaultAccounts() throws -> [String] {
+        var query = localVaultBaseQuery()
+        query[kSecReturnAttributes as String] = true
+        query[kSecMatchLimit as String] = kSecMatchLimitAll
+
+        var result: CFTypeRef?
+        let status = SecItemCopyMatching(query as CFDictionary, &result)
+        if status == errSecItemNotFound {
+            return []
+        }
+        guard status == errSecSuccess else {
+            throw VaultError.keychain(status)
+        }
+
+        if let item = result as? [String: Any],
+           let account = item[kSecAttrAccount as String] as? String {
+            return [account]
+        }
+
+        let items = result as? [[String: Any]] ?? []
+        return items.compactMap { $0[kSecAttrAccount as String] as? String }
+    }
+
+    private func loadLocalVaultRecord(account: String) throws -> CredentialRecord {
+        var query = localVaultItemQuery(account: account)
+        query[kSecReturnData as String] = true
+        query[kSecMatchLimit as String] = kSecMatchLimitOne
+
+        var result: CFTypeRef?
+        let status = SecItemCopyMatching(query as CFDictionary, &result)
+        guard status != errSecItemNotFound else {
+            throw VaultError.missingRecord
+        }
+        guard status == errSecSuccess else {
+            throw VaultError.keychain(status)
+        }
+        guard let data = result as? Data, let record = try? decoder.decode(CredentialRecord.self, from: data) else {
+            throw VaultError.decodingFailed
+        }
+        return record
     }
 
     private func migrateLegacyRecordsIfNeeded() throws {
