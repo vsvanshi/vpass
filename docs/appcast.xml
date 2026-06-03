@@ -4,13 +4,12 @@
         <title>VPass</title>
         <item>
             <title>1.0.0</title>
-            <pubDate>Wed, 03 Jun 2026 13:26:08 +0530</pubDate>
+            <pubDate>Wed, 03 Jun 2026 14:55:28 +0530</pubDate>
             <link>https://github.com/vsvanshi/vpass</link>
             <sparkle:version>1</sparkle:version>
             <sparkle:shortVersionString>1.0.0</sparkle:shortVersionString>
             <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
-            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
-            <enclosure url="https://github.com/vsvanshi/vpass/releases/download/v1.0.0/VPass-1.0.0.dmg" length="4740957" type="application/octet-stream" sparkle:edSignature="8J/B1mfSmm91le/kCgoGvOQCx79J8QO2K2UN/u/gtzjwJGOEb6To+qRNV52lyNFkUcoNMmegFFZO1UkUTGH6BQ=="/>
+            <enclosure url="https://github.com/vsvanshi/vpass/releases/download/v1.0.0/VPass-1.0.0.dmg" length="4944302" type="application/octet-stream" sparkle:edSignature="Sp3dnjqBMPolgtv9zDqKBKqjkfkTzNB8lK3bK7kZrV/f0Y/mHbIZWV81PUVixXsHXcJzzPjlbCruVCotSgb2BA=="/>
         </item>
     </channel>
 </rss>

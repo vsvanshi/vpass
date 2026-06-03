@@ -43,64 +43,43 @@ echo "Building VPass $VERSION ($BUILD)"
 rm -rf "$DIST_DIR"
 mkdir -p "$DIST_DIR" "$APPCAST_DIR"
 
-xcodebuild \
+# Archive, then export as Developer ID. This MUST use Xcode's archive/export
+# rather than a hand-rolled codesign: the app uses keychain-access-groups, an
+# entitlement that must be vended by an embedded provisioning profile. The
+# export step (with -allowProvisioningUpdates) creates and embeds that profile
+# and injects application-identifier automatically. Signing manually omits the
+# profile, and the app then fails to launch under hardened runtime with
+# AMFI "Launchd job spawn failed" (POSIX 163).
+ARCHIVE_PATH="$DIST_DIR/VPass.xcarchive"
+EXPORT_DIR="$DIST_DIR/export"
+TEAM_ID="${APP_IDENTIFIER_PREFIX%.}"
+
+xcodebuild archive \
   -project "$PROJECT" \
   -scheme "$SCHEME" \
   -configuration "$CONFIGURATION" \
-  -destination 'platform=macOS' \
-  build \
-  CODE_SIGNING_ALLOWED=NO \
+  -archivePath "$ARCHIVE_PATH" \
+  -destination 'generic/platform=macOS' \
   CURRENT_PROJECT_VERSION="$BUILD" \
   MARKETING_VERSION="$VERSION"
 
-BUILT_PRODUCTS_DIR="$(
-  xcodebuild -project "$PROJECT" -scheme "$SCHEME" -configuration "$CONFIGURATION" -showBuildSettings \
-    | awk -F' = ' '/BUILT_PRODUCTS_DIR = / {print $2; exit}'
-)"
-BUILT_APP="$BUILT_PRODUCTS_DIR/VPass.app"
+cat > "$DIST_DIR/ExportOptions.plist" <<EOF
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0"><dict>
+  <key>method</key><string>developer-id</string>
+  <key>teamID</key><string>$TEAM_ID</string>
+  <key>signingStyle</key><string>automatic</string>
+</dict></plist>
+EOF
 
-ditto "$BUILT_APP" "$WORK_APP"
-if [[ -n "$EMBEDDED_PROVISIONING_PROFILE" ]]; then
-  if [[ ! -f "$EMBEDDED_PROVISIONING_PROFILE" ]]; then
-    echo "Missing provisioning profile: $EMBEDDED_PROVISIONING_PROFILE" >&2
-    exit 1
-  fi
-  cp "$EMBEDDED_PROVISIONING_PROFILE" "$WORK_APP/Contents/embedded.provisionprofile"
-fi
-sed \
-  -e "s/\$(PRODUCT_BUNDLE_IDENTIFIER)/com.varunsuryawanshi.vpass/g" \
-  -e "s/\$(AppIdentifierPrefix)/$APP_IDENTIFIER_PREFIX/g" \
-  -e "s/\$(TeamIdentifierPrefix)/$APP_IDENTIFIER_PREFIX/g" \
-  -e "s/\$(EXECUTABLE_NAME)/VPass/g" \
-  "$RELEASE_ENTITLEMENTS" > "$PROCESSED_ENTITLEMENTS"
+xcodebuild -exportArchive \
+  -archivePath "$ARCHIVE_PATH" \
+  -exportOptionsPlist "$DIST_DIR/ExportOptions.plist" \
+  -exportPath "$EXPORT_DIR" \
+  -allowProvisioningUpdates
 
-if [[ -d "$WORK_APP/Contents/Frameworks/Sparkle.framework" ]]; then
-  SPARKLE_FRAMEWORK="$WORK_APP/Contents/Frameworks/Sparkle.framework"
-  for item in \
-    "$SPARKLE_FRAMEWORK/Versions/Current/Autoupdate" \
-    "$SPARKLE_FRAMEWORK/Versions/Current/Updater.app" \
-    "$SPARKLE_FRAMEWORK/Versions/Current/XPCServices/Downloader.xpc" \
-    "$SPARKLE_FRAMEWORK/Versions/Current/XPCServices/Installer.xpc" \
-    "$SPARKLE_FRAMEWORK/Versions/Current"; do
-    if [[ -e "$item" ]]; then
-      codesign \
-        --force \
-        --timestamp \
-        --options runtime \
-        --preserve-metadata=identifier,entitlements,flags \
-        --sign "$SIGNING_IDENTITY" \
-        "$item"
-    fi
-  done
-fi
-
-codesign \
-  --force \
-  --timestamp \
-  --options runtime \
-  --entitlements "$PROCESSED_ENTITLEMENTS" \
-  --sign "$SIGNING_IDENTITY" \
-  "$WORK_APP"
+ditto "$EXPORT_DIR/VPass.app" "$WORK_APP"
 codesign --verify --deep --strict --verbose=2 "$WORK_APP"
 
 PRE_NOTARY_ZIP="$DIST_DIR/VPass-$VERSION-notary.zip"
