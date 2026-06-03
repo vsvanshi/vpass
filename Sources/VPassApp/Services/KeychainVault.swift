@@ -36,6 +36,7 @@ final class KeychainVault {
     private let decoder = JSONDecoder()
     private let accessGroup: String?
     private let synchronizesWithiCloud: Bool
+    private let usesDataProtectionKeychain: Bool
     private var canUseSharedCloudVault: Bool {
         synchronizesWithiCloud && accessGroup != nil
     }
@@ -49,18 +50,25 @@ final class KeychainVault {
         accessGroup: String? = KeychainVault.defaultAccessGroup(),
         synchronizesWithiCloud: Bool = true,
         service: String = "com.varunsuryawanshi.vpass.shared-vault",
-        deletionService: String = "com.varunsuryawanshi.vpass.shared-vault.deleted"
+        deletionService: String = "com.varunsuryawanshi.vpass.shared-vault.deleted",
+        // The data protection keychain requires the process to be signed with
+        // the keychain-access-groups / app-identifier entitlement. The real
+        // app has it; an unsigned unit-test binary does not, so tests inject
+        // `false` to exercise the file-based keychain instead.
+        usesDataProtectionKeychain: Bool = true
     ) {
         self.userDefaults = userDefaults
         self.accessGroup = accessGroup
         self.synchronizesWithiCloud = synchronizesWithiCloud && accessGroup != nil
         self.service = service
         self.deletionService = deletionService
+        self.usesDataProtectionKeychain = usesDataProtectionKeychain
         encoder.dateEncodingStrategy = .iso8601
         decoder.dateDecodingStrategy = .iso8601
     }
 
     func loadRecords() throws -> [CredentialRecord] {
+        migrateToDataProtectionKeychainIfNeeded()
         try migrateLegacyRecordsIfNeeded()
         return try loadSharedRecords().sorted { lhs, rhs in
             lhs.title.localizedCaseInsensitiveCompare(rhs.title) == .orderedAscending
@@ -213,6 +221,16 @@ final class KeychainVault {
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: service
         ]
+        if usesDataProtectionKeychain {
+            // Route to the data protection keychain. It is the only macOS
+            // keychain that participates in iCloud Keychain sync and shares
+            // access groups with the iOS app. Without this flag the SecItem
+            // APIs fall back to the legacy file-based "login" keychain, whose
+            // items are bound to the app's code signature by an ACL — so every
+            // dev rebuild (new signature) triggers the "allow access" prompt,
+            // and `kSecAttrSynchronizable` never actually syncs.
+            query[kSecUseDataProtectionKeychain as String] = true
+        }
         if canUseSharedCloudVault, let accessGroup {
             query[kSecAttrAccessGroup as String] = accessGroup
         }
@@ -413,6 +431,26 @@ final class KeychainVault {
             throw VaultError.decodingFailed
         }
         return record
+    }
+
+    private func migrateToDataProtectionKeychainIfNeeded() {
+        let migratedKey = "com.varunsuryawanshi.vpass.shared-vault.dataProtectionMigrated"
+        guard !userDefaults.bool(forKey: migratedKey) else {
+            return
+        }
+
+        // Records written before the data protection keychain fix landed in
+        // the file-based "login" keychain. Copy whatever we can read WITHOUT
+        // prompting (the local-vault reader uses a non-interactive context)
+        // into the data protection keychain so they keep appearing and start
+        // syncing. Best-effort: anything unreadable stays put and can still be
+        // recovered from an encrypted backup.
+        let fileBasedRecords = (try? loadLocalVaultRecords(allowsAuthentication: false)) ?? []
+        for record in fileBasedRecords {
+            try? save(record)
+        }
+
+        userDefaults.set(true, forKey: migratedKey)
     }
 
     private func migrateLegacyRecordsIfNeeded() throws {

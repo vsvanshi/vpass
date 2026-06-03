@@ -16,7 +16,8 @@ final class KeychainVaultTests: XCTestCase {
             accessGroup: nil,
             synchronizesWithiCloud: false,
             service: service,
-            deletionService: "\(service).deleted"
+            deletionService: "\(service).deleted",
+            usesDataProtectionKeychain: false
         )
         let record = CredentialRecord(
             id: UUID(),

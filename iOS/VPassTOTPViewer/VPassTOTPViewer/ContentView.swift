@@ -6,15 +6,36 @@ final class VaultListViewModel: ObservableObject {
     @Published private(set) var errorMessage: String?
     @Published private(set) var lastLoadedAt: Date?
     @Published var searchText = ""
-    @Published var selectedTag = VaultTag.personal.name
+    @Published var selectedTag: String {
+        didSet {
+            guard selectedTag != oldValue else { return }
+            UserDefaults.standard.set(selectedTag, forKey: Self.selectedTagDefaultsKey)
+        }
+    }
     @Published var editor: CredentialDraft?
 
+    private static let selectedTagDefaultsKey = "selectedTag"
     private let store = VaultKeychainStore()
+
+    init() {
+        // Restore the last selected tag, falling back to Personal if it was
+        // never set or no longer exists.
+        let storedTag = UserDefaults.standard.string(forKey: Self.selectedTagDefaultsKey)
+        if let storedTag, VaultTag.all.contains(where: { $0.name == storedTag }) {
+            selectedTag = storedTag
+        } else {
+            selectedTag = VaultTag.personal.name
+        }
+    }
 
     var filteredRecords: [CredentialRecord] {
         records
             .filter { $0.tag == selectedTag }
             .filter { $0.matches(searchText) }
+    }
+
+    func count(for tag: String) -> Int {
+        records.lazy.filter { $0.tag == tag }.count
     }
 
     var groupedRecords: [(String, [CredentialRecord])] {
@@ -77,29 +98,47 @@ struct ContentView: View {
     @StateObject private var viewModel = VaultListViewModel()
     @StateObject private var authenticator = AppAuthenticator()
     @Environment(\.scenePhase) private var scenePhase
+    @State private var showSplash = true
 
     var body: some View {
-        Group {
-            if authenticator.isUnlocked {
-                vaultContent
-            } else {
-                LockedVaultView()
-                    .environmentObject(authenticator)
+        ZStack {
+            Group {
+                if authenticator.isUnlocked {
+                    vaultContent
+                } else {
+                    LockedVaultView()
+                        .environmentObject(authenticator)
+                }
+            }
+            .alert("Unlock Failed", isPresented: Binding(
+                get: { authenticator.errorMessage != nil },
+                set: { if !$0 { authenticator.errorMessage = nil } }
+            )) {
+                Button("OK", role: .cancel) {}
+            } message: {
+                Text(authenticator.errorMessage ?? "")
+            }
+            .onChange(of: scenePhase) { _, phase in
+                if phase == .active {
+                    authenticator.unlockIfRecentlyAuthenticated()
+                } else {
+                    authenticator.lock()
+                }
+            }
+
+            if showSplash {
+                SplashView()
+                    .transition(.opacity)
+                    .zIndex(1)
             }
         }
-        .alert("Unlock Failed", isPresented: Binding(
-            get: { authenticator.errorMessage != nil },
-            set: { if !$0 { authenticator.errorMessage = nil } }
-        )) {
-            Button("OK", role: .cancel) {}
-        } message: {
-            Text(authenticator.errorMessage ?? "")
-        }
-        .onChange(of: scenePhase) { _, phase in
-            if phase == .active {
-                authenticator.unlockIfRecentlyAuthenticated()
-            } else {
-                authenticator.lock()
+        .task {
+            // Hold the splash briefly so the cold start reads as intentional,
+            // then crossfade into the vault. Picks up seamlessly from the
+            // matching launch-screen background, so there is no white flash.
+            try? await Task.sleep(nanoseconds: 1_050_000_000)
+            withAnimation(.easeOut(duration: 0.4)) {
+                showSplash = false
             }
         }
         .onAppear {
@@ -133,43 +172,72 @@ struct ContentView: View {
                         .buttonStyle(.borderedProminent)
                     }
                 } else {
-                    List {
-                        Section {
-                            Picker("Tag", selection: $viewModel.selectedTag) {
-                                ForEach(VaultTag.all) { tag in
-                                    Label(tag.name, systemImage: tag.systemImage)
-                                        .tag(tag.name)
-                                }
-                            }
-                            .pickerStyle(.segmented)
-                            .listRowInsets(EdgeInsets(top: 8, leading: 12, bottom: 8, trailing: 12))
-                        }
-
-                        ForEach(viewModel.groupedRecords, id: \.0) { title, records in
-                            Section(title) {
-                                ForEach(records) { record in
-                                    NavigationLink {
-                                        CredentialDetailView(
-                                            record: record,
-                                            onEdit: { viewModel.edit(record) },
-                                            onDelete: { viewModel.delete(record) }
-                                        )
-                                    } label: {
-                                        CredentialRowView(record: record)
+                    VStack(spacing: 0) {
+                        FlowLayout(spacing: 8) {
+                            ForEach(VaultTag.all) { tag in
+                                TagChip(
+                                    tag: tag,
+                                    count: viewModel.count(for: tag.name),
+                                    isSelected: viewModel.selectedTag == tag.name
+                                ) {
+                                    withAnimation(.snappy(duration: 0.2)) {
+                                        viewModel.selectedTag = tag.name
                                     }
                                 }
                             }
                         }
-                    }
-                    .listStyle(.insetGrouped)
-                    .overlay {
-                        if viewModel.filteredRecords.isEmpty {
-                            ContentUnavailableView.search(text: viewModel.searchText)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(.horizontal, 16)
+                        .padding(.top, 10)
+                        .padding(.bottom, 10)
+                        .background(.bar)
+                        .overlay(alignment: .bottom) {
+                            Divider()
+                        }
+
+                        List {
+                            ForEach(viewModel.groupedRecords, id: \.0) { title, records in
+                                Section {
+                                    ForEach(records) { record in
+                                        NavigationLink {
+                                            CredentialDetailView(
+                                                record: record,
+                                                onEdit: { viewModel.edit(record) },
+                                                onDelete: { viewModel.delete(record) }
+                                            )
+                                        } label: {
+                                            CredentialRowView(record: record)
+                                        }
+                                    }
+                                } header: {
+                                    HStack {
+                                        Text(title)
+                                        Spacer()
+                                        Text("\(records.count)")
+                                            .monospacedDigit()
+                                    }
+                                }
+                            }
+                        }
+                        .listStyle(.insetGrouped)
+                        .overlay {
+                            if viewModel.filteredRecords.isEmpty {
+                                if viewModel.searchText.isEmpty {
+                                    ContentUnavailableView(
+                                        "No \(viewModel.selectedTag) Credentials",
+                                        systemImage: "folder",
+                                        description: Text("Nothing saved under this tag yet.")
+                                    )
+                                } else {
+                                    ContentUnavailableView.search(text: viewModel.searchText)
+                                }
+                            }
                         }
                     }
                 }
             }
             .navigationTitle("VPass")
+            .navigationBarTitleDisplayMode(.inline)
             .searchable(text: $viewModel.searchText, prompt: "Search credentials")
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
@@ -204,16 +272,73 @@ struct ContentView: View {
     }
 }
 
+extension Color {
+    /// Matches LaunchScreen.storyboard's background (same sRGB values) so the
+    /// native launch screen and the SwiftUI splash share one seamless color.
+    static let brandBackground = Color(.sRGB, red: 0.13, green: 0.39, blue: 0.93, opacity: 1)
+}
+
+private struct SplashView: View {
+    @State private var appeared = false
+
+    var body: some View {
+        ZStack {
+            LinearGradient(
+                colors: [
+                    Color.brandBackground,
+                    Color(.sRGB, red: 0.09, green: 0.28, blue: 0.74, opacity: 1)
+                ],
+                startPoint: .top,
+                endPoint: .bottom
+            )
+            .ignoresSafeArea()
+
+            VStack(spacing: 16) {
+                Image(systemName: "lock.shield.fill")
+                    .font(.system(size: 66, weight: .bold))
+                    .foregroundStyle(.white)
+                    .shadow(color: .black.opacity(0.18), radius: 12, y: 6)
+                    .scaleEffect(appeared ? 1 : 0.72)
+                    .opacity(appeared ? 1 : 0)
+
+                VStack(spacing: 4) {
+                    Text("VPass")
+                        .font(.system(size: 34, weight: .bold, design: .rounded))
+                        .foregroundStyle(.white)
+                    Text("Authenticator")
+                        .font(.subheadline.weight(.medium))
+                        .foregroundStyle(.white.opacity(0.85))
+                }
+                .opacity(appeared ? 1 : 0)
+                .offset(y: appeared ? 0 : 8)
+            }
+        }
+        .onAppear {
+            withAnimation(.spring(response: 0.55, dampingFraction: 0.7)) {
+                appeared = true
+            }
+        }
+    }
+}
+
 private struct LockedVaultView: View {
     @EnvironmentObject private var authenticator: AppAuthenticator
 
     var body: some View {
         VStack(spacing: 20) {
             Image(systemName: "lock.shield.fill")
-                .font(.system(size: 54, weight: .semibold))
-                .foregroundStyle(.blue)
-                .frame(width: 92, height: 92)
-                .background(Color.blue.opacity(0.12), in: RoundedRectangle(cornerRadius: 22))
+                .font(.system(size: 48, weight: .bold))
+                .foregroundStyle(.white)
+                .frame(width: 96, height: 96)
+                .background(
+                    LinearGradient(
+                        colors: [Color.brandBackground, Color.brandBackground.opacity(0.7)],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    ),
+                    in: RoundedRectangle(cornerRadius: 24, style: .continuous)
+                )
+                .shadow(color: Color.brandBackground.opacity(0.35), radius: 14, y: 8)
 
             VStack(spacing: 7) {
                 Text("VPass is Locked")
@@ -241,16 +366,116 @@ private struct LockedVaultView: View {
     }
 }
 
+/// Lays subviews left-to-right with uniform spacing, wrapping to the next row
+/// when the current one is full. Not scrollable.
+private struct FlowLayout: Layout {
+    var spacing: CGFloat = 8
+
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout Void) -> CGSize {
+        let maxWidth = proposal.width ?? .infinity
+        var x: CGFloat = 0
+        var y: CGFloat = 0
+        var rowHeight: CGFloat = 0
+
+        for subview in subviews {
+            let size = subview.sizeThatFits(.unspecified)
+            if x > 0 && x + size.width > maxWidth {
+                x = 0
+                y += rowHeight + spacing
+                rowHeight = 0
+            }
+            x += size.width + spacing
+            rowHeight = max(rowHeight, size.height)
+        }
+
+        let width = maxWidth == .infinity ? max(x - spacing, 0) : maxWidth
+        return CGSize(width: width, height: y + rowHeight)
+    }
+
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout Void) {
+        var x = bounds.minX
+        var y = bounds.minY
+        var rowHeight: CGFloat = 0
+
+        for subview in subviews {
+            let size = subview.sizeThatFits(.unspecified)
+            if x > bounds.minX && x + size.width > bounds.maxX {
+                x = bounds.minX
+                y += rowHeight + spacing
+                rowHeight = 0
+            }
+            subview.place(at: CGPoint(x: x, y: y), anchor: .topLeading, proposal: ProposedViewSize(size))
+            x += size.width + spacing
+            rowHeight = max(rowHeight, size.height)
+        }
+    }
+}
+
+private struct TagChip: View {
+    let tag: VaultTag
+    let count: Int
+    let isSelected: Bool
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 6) {
+                Image(systemName: tag.systemImage)
+                    .font(.caption.weight(.semibold))
+
+                Text(tag.name)
+                    .font(.subheadline.weight(.medium))
+
+                Text("\(count)")
+                    .font(.caption2.weight(.bold))
+                    .monospacedDigit()
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 1)
+                    .background(
+                        Capsule().fill(isSelected ? Color.white.opacity(0.25) : Color.secondary.opacity(0.18))
+                    )
+            }
+            .padding(.horizontal, 13)
+            .padding(.vertical, 8)
+            .background {
+                Capsule().fill(isSelected ? Color.brandBackground : Color.secondary.opacity(0.12))
+            }
+            .overlay {
+                Capsule().strokeBorder(
+                    isSelected ? Color.clear : Color.secondary.opacity(0.22),
+                    lineWidth: 1
+                )
+            }
+            .foregroundStyle(isSelected ? Color.white : Color.primary)
+            .shadow(color: isSelected ? Color.brandBackground.opacity(0.3) : .clear, radius: 5, y: 2)
+            .contentShape(Capsule())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("\(tag.name), \(count) credential\(count == 1 ? "" : "s")")
+        .accessibilityAddTraits(isSelected ? [.isButton, .isSelected] : .isButton)
+    }
+}
+
 private struct CredentialRowView: View {
     let record: CredentialRecord
 
     var body: some View {
-        HStack(spacing: 12) {
+        HStack(spacing: 13) {
             Image(systemName: record.hasTOTP ? "lock.rotation" : "key.fill")
-                .font(.headline)
-                .foregroundStyle(.blue)
-                .frame(width: 34, height: 34)
-                .background(Color.blue.opacity(0.12), in: RoundedRectangle(cornerRadius: 8))
+                .font(.system(size: 16, weight: .semibold))
+                .foregroundStyle(.white)
+                .frame(width: 38, height: 38)
+                .background(
+                    LinearGradient(
+                        colors: record.hasTOTP
+                            ? [Color.green, Color.green.opacity(0.65)]
+                            : [Color.brandBackground, Color.brandBackground.opacity(0.65)],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    ),
+                    in: RoundedRectangle(cornerRadius: 10, style: .continuous)
+                )
+                .shadow(color: .black.opacity(0.08), radius: 2, y: 1)
 
             VStack(alignment: .leading, spacing: 3) {
                 Text(record.title.isEmpty ? "Untitled" : record.title)
@@ -262,14 +487,18 @@ private struct CredentialRowView: View {
                     .lineLimit(1)
             }
 
-            Spacer()
+            Spacer(minLength: 8)
 
             if record.hasTOTP {
-                Image(systemName: "number.circle.fill")
+                Text("TOTP")
+                    .font(.caption2.weight(.bold))
                     .foregroundStyle(.green)
+                    .padding(.horizontal, 7)
+                    .padding(.vertical, 3)
+                    .background(Color.green.opacity(0.14), in: Capsule())
             }
         }
-        .padding(.vertical, 4)
+        .padding(.vertical, 5)
     }
 }
 

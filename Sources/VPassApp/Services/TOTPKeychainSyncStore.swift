@@ -136,7 +136,11 @@ final class TOTPKeychainSyncStore {
     private func baseQuery() -> [String: Any] {
         var query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
-            kSecAttrService as String: service
+            kSecAttrService as String: service,
+            // Use the data protection keychain so synced TOTP secrets reach
+            // iCloud Keychain and the iOS app (the file-based default keychain
+            // does neither). See KeychainVault.baseQuery for the full rationale.
+            kSecUseDataProtectionKeychain as String: true
         ]
         if let accessGroup {
             query[kSecAttrAccessGroup as String] = accessGroup
