@@ -4,16 +4,27 @@ import SwiftUI
 @main
 struct VPassApp: App {
     @NSApplicationDelegateAdaptor(VPassAppDelegate.self) private var appDelegate
-    @StateObject private var viewModel = VaultViewModel(vault: KeychainVault())
-    @StateObject private var authenticator = AppAuthenticator.shared
-    @StateObject private var updater = AppUpdater()
+    @StateObject private var viewModel: VaultViewModel
+    @StateObject private var authenticator: AppAuthenticator
+    @StateObject private var updater: AppUpdater
+
+    init() {
+        let viewModel = VaultViewModel(vault: KeychainVault())
+        _viewModel = StateObject(wrappedValue: viewModel)
+        _authenticator = StateObject(wrappedValue: AppAuthenticator.shared)
+        _updater = StateObject(wrappedValue: AppUpdater())
+    }
 
     var body: some Scene {
+        WindowGroup("VPass", id: "main") {
+            ContentView()
+                .environmentObject(viewModel)
+                .environmentObject(authenticator)
+        }
+        .defaultSize(width: 1120, height: 720)
+
         MenuBarExtra("VPass", systemImage: "lock.shield") {
             MenuBarRootView(
-                openMainWindow: {
-                    appDelegate.showMainWindow(viewModel: viewModel)
-                },
                 checkForUpdates: {
                     updater.checkForUpdates()
                 },
@@ -33,16 +44,14 @@ struct VPassApp: App {
 final class VPassAppDelegate: NSObject, NSApplicationDelegate {
     private var allowsQuit = false
     private var quitKeyMonitor: Any?
-    private let windowController = VPassWindowController()
-    private weak var lastViewModel: VaultViewModel?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
-        NSApplication.shared.setActivationPolicy(.accessory)
+        NSApplication.shared.setActivationPolicy(.regular)
         quitKeyMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { event in
             guard event.isVPassQuitShortcut else {
                 return event
             }
-            NotificationCenter.default.post(name: .vPassHideMainWindow, object: nil)
+            self.hideWindows()
             return nil
         }
     }
@@ -52,127 +61,44 @@ final class VPassAppDelegate: NSObject, NSApplicationDelegate {
             return .terminateNow
         }
 
-        NotificationCenter.default.post(name: .vPassHideMainWindow, object: nil)
+        hideWindows()
         return .terminateCancel
     }
 
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
-        if let lastViewModel {
-            showMainWindow(viewModel: lastViewModel)
-        }
+        showWindows()
         return true
-    }
-
-    func applicationDidResignActive(_ notification: Notification) {
-        windowController.keepWindowAvailableIfVisible()
-    }
-
-    func showMainWindow(viewModel: VaultViewModel) {
-        lastViewModel = viewModel
-        viewModel.reload()
-        windowController.show(viewModel: viewModel)
     }
 
     func quitFromMenuBar() {
         allowsQuit = true
         NSApplication.shared.terminate(nil)
     }
-}
 
-@MainActor
-final class VPassWindowController: NSObject, NSWindowDelegate {
-    private var window: NSWindow?
-    private var hideObserver: NSObjectProtocol?
-    private var activationTask: Task<Void, Never>?
-
-    override init() {
-        super.init()
-        hideObserver = NotificationCenter.default.addObserver(
-            forName: .vPassHideMainWindow,
-            object: nil,
-            queue: .main
-        ) { [weak self] _ in
-            Task { @MainActor in
-                self?.hide()
-            }
+    private func hideWindows() {
+        mainWindows.forEach { window in
+            window.orderOut(nil)
         }
-    }
-
-    func show(viewModel: VaultViewModel) {
-        if let window {
-            show(window)
-            return
-        }
-
-        let contentView = ContentView()
-            .environmentObject(viewModel)
-            .environmentObject(AppAuthenticator.shared)
-        let hostingController = NSHostingController(rootView: contentView)
-        let window = NSWindow(contentViewController: hostingController)
-        window.title = "VPass"
-        window.styleMask = [.titled, .closable, .miniaturizable, .resizable]
-        window.setContentSize(NSSize(width: 1120, height: 720))
-        window.minSize = NSSize(width: 1040, height: 640)
-        window.isReleasedWhenClosed = false
-        window.hidesOnDeactivate = false
-        window.level = .normal
-        window.collectionBehavior = [.managed, .fullScreenPrimary]
-        window.delegate = self
-        window.center()
-
-        self.window = window
-        show(window)
-    }
-
-    func hide() {
-        activationTask?.cancel()
-        activationTask = nil
-
-        window?.orderOut(nil)
         NSApplication.shared.setActivationPolicy(.accessory)
         AppAuthenticator.shared.lock()
     }
 
-    func windowShouldClose(_ sender: NSWindow) -> Bool {
-        hide()
-        return false
-    }
-
-    func keepWindowAvailableIfVisible() {
-        if window?.isVisible == true {
-            NSApplication.shared.setActivationPolicy(.regular)
-        }
-    }
-
-    private func show(_ window: NSWindow) {
-        activationTask?.cancel()
+    private func showWindows() {
         NSApplication.shared.setActivationPolicy(.regular)
-        AppAuthenticator.shared.unlockIfRecentlyAuthenticated()
-        bringToFront(window)
-
-        activationTask = Task { @MainActor in
-            try? await Task.sleep(nanoseconds: 150_000_000)
-            guard !Task.isCancelled, window.isVisible else {
-                return
+        mainWindows.forEach { window in
+            if window.isMiniaturized {
+                window.deminiaturize(nil)
             }
-            NSApplication.shared.setActivationPolicy(.regular)
-            bringToFront(window)
-        }
-    }
-
-    private func bringToFront(_ window: NSWindow) {
-        if window.isMiniaturized {
-            window.deminiaturize(nil)
+            window.makeKeyAndOrderFront(nil)
         }
         NSApplication.shared.activate(ignoringOtherApps: true)
-        window.makeKeyAndOrderFront(nil)
-        window.orderFrontRegardless()
     }
 
-}
-
-private extension Notification.Name {
-    static let vPassHideMainWindow = Notification.Name("vPassHideMainWindow")
+    private var mainWindows: [NSWindow] {
+        NSApplication.shared.windows.filter { window in
+            window.styleMask.contains(.titled)
+        }
+    }
 }
 
 private extension NSEvent {
@@ -185,8 +111,8 @@ private extension NSEvent {
 
 private struct MenuBarRootView: View {
     @EnvironmentObject private var viewModel: VaultViewModel
+    @Environment(\.openWindow) private var openWindow
 
-    let openMainWindow: () -> Void
     let checkForUpdates: () -> Void
     let canCheckForUpdates: Bool
     let quit: () -> Void
@@ -200,7 +126,9 @@ private struct MenuBarRootView: View {
 
             HStack(spacing: 10) {
                 Button {
-                    openMainWindow()
+                    NSApplication.shared.setActivationPolicy(.regular)
+                    openWindow(id: "main")
+                    NSApplication.shared.activate(ignoringOtherApps: true)
                 } label: {
                     Label("Open VPass", systemImage: "macwindow")
                 }
