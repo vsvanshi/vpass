@@ -6,7 +6,7 @@ struct CredentialEditorView: View {
     @State private var newGroupName: String
     @State private var revealPassword = false
     @State private var errorMessage: String?
-    @State private var expiryShortcutValue = 30
+    @State private var expiryShortcutValue = 60
     @State private var expiryShortcutUnit = ExpiryShortcutUnit.days
 
     let groupsByTag: [String: [String]]
@@ -75,9 +75,7 @@ struct CredentialEditorView: View {
                         ExpiryShortcutControl(
                             value: $expiryShortcutValue,
                             unit: $expiryShortcutUnit
-                        ) {
-                            applyExpiryShortcut()
-                        }
+                        )
                     }
                 }
 
@@ -167,6 +165,18 @@ struct CredentialEditorView: View {
                 draft.groupName = ""
             }
         }
+        .onChange(of: expiryShortcutValue) { _, _ in
+            updateExpiryFromShortcut()
+        }
+        .onChange(of: expiryShortcutUnit) { _, _ in
+            updateExpiryFromShortcut()
+        }
+        .onChange(of: draft.hasExpiry) { _, isOn in
+            // Default a freshly-enabled expiry to the shortcut (60 days).
+            if isOn {
+                updateExpiryFromShortcut()
+            }
+        }
         .alert("QR Scan Failed", isPresented: Binding(
             get: { errorMessage != nil },
             set: { if !$0 { errorMessage = nil } }
@@ -198,13 +208,24 @@ struct CredentialEditorView: View {
         groupsByTag[draft.tag] ?? []
     }
 
-    private func applyExpiryShortcut() {
+    private func updateExpiryFromShortcut() {
+        let range = expiryShortcutUnit.range
+        let clamped = min(max(expiryShortcutValue, range.lowerBound), range.upperBound)
+        if clamped != expiryShortcutValue {
+            // Snap an out-of-range / empty entry back into range. This re-fires
+            // the change handler, which then recomputes with the clamped value.
+            expiryShortcutValue = clamped
+            return
+        }
         let today = Calendar.current.startOfDay(for: Date())
-        draft.expiresAt = Calendar.current.date(
+        if let newDate = Calendar.current.date(
             byAdding: expiryShortcutUnit.calendarComponent,
-            value: expiryShortcutValue,
+            value: clamped,
             to: today
-        ) ?? draft.expiresAt
+        ) {
+            draft.expiresAt = newDate
+        }
+        // Fallback: if the date can't be computed, keep the existing expiry date.
     }
 
     @MainActor
@@ -268,7 +289,6 @@ private enum ExpiryShortcutUnit: String, CaseIterable, Identifiable {
 private struct ExpiryShortcutControl: View {
     @Binding var value: Int
     @Binding var unit: ExpiryShortcutUnit
-    let onApply: () -> Void
 
     var body: some View {
         HStack(spacing: 12) {
@@ -282,23 +302,27 @@ private struct ExpiryShortcutControl: View {
             }
             .labelsHidden()
             .pickerStyle(.segmented)
-            .frame(width: 170)
-            .onChange(of: unit) { _, newUnit in
-                value = min(max(value, newUnit.range.lowerBound), newUnit.range.upperBound)
+            .frame(width: 150)
+
+            // Type a number directly, or nudge it with the stepper. The expiry
+            // date updates live (see updateExpiryFromShortcut) — no button.
+            HStack(spacing: 4) {
+                TextField("", value: $value, format: .number)
+                    .textFieldStyle(.roundedBorder)
+                    .multilineTextAlignment(.trailing)
+                    .frame(width: 64)
+                    .labelsHidden()
+                Stepper(value: $value, in: unit.range) {
+                    EmptyView()
+                }
+                .labelsHidden()
             }
 
-            Stepper(value: $value, in: unit.range) {
-                Text("\(value)")
-                    .monospacedDigit()
-                    .frame(minWidth: 34, alignment: .trailing)
-            }
-            .frame(width: 120)
+            Text(unit == .days ? "days from today" : "months from today")
+                .font(.caption)
+                .foregroundStyle(.secondary)
 
-            Button {
-                onApply()
-            } label: {
-                Label("Set expiry", systemImage: "calendar.badge.checkmark")
-            }
+            Spacer()
         }
     }
 }

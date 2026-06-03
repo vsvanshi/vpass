@@ -80,7 +80,10 @@ struct QuickSearchView: View {
                         }
                     }
                 }
-                .frame(width: 420, height: min(CGFloat(results.count) * 78, 420))
+                // Cap the list height so the tray menu never grows unbounded;
+                // beyond this the rows scroll while the search bar (above) and
+                // the action buttons (below, in MenuBarRootView) stay fixed.
+                .frame(width: 420, height: min(CGFloat(results.count) * 72, 360))
             }
 
             if let copiedMessage {
