@@ -1,4 +1,5 @@
 import Foundation
+import LocalAuthentication
 import Security
 
 enum VaultError: LocalizedError {
@@ -115,10 +116,6 @@ final class KeychainVault {
     }
 
     private func loadSharedRecords() throws -> [CredentialRecord] {
-        if canUseSharedCloudVault {
-            try migrateLocalRecordsToCloudVault()
-        }
-
         let deletionMarkers = try loadDeletionMarkers()
         let records = try loadSharedAccounts().compactMap { account in
             try? loadSharedRecord(account: account)
@@ -325,39 +322,29 @@ final class KeychainVault {
         [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: legacyService,
-            kSecAttrAccount as String: account
+            kSecAttrAccount as String: account,
+            kSecUseAuthenticationContext as String: nonInteractiveKeychainContext()
         ]
     }
 
     private func localVaultBaseQuery() -> [String: Any] {
         [
             kSecClass as String: kSecClassGenericPassword,
-            kSecAttrService as String: service
+            kSecAttrService as String: service,
+            kSecUseAuthenticationContext as String: nonInteractiveKeychainContext()
         ]
+    }
+
+    private func nonInteractiveKeychainContext() -> LAContext {
+        let context = LAContext()
+        context.interactionNotAllowed = true
+        return context
     }
 
     private func localVaultItemQuery(account: String) -> [String: Any] {
         var query = localVaultBaseQuery()
         query[kSecAttrAccount as String] = account
         return query
-    }
-
-    private func migrateLocalRecordsToCloudVault() throws {
-        let localRecords = try loadLocalVaultRecords()
-        guard !localRecords.isEmpty else {
-            return
-        }
-
-        let cloudRecords = try loadCloudRecordsWithoutMigration()
-        var merged = Dictionary(uniqueKeysWithValues: cloudRecords.map { ($0.id, $0) })
-
-        for record in localRecords {
-            if let existing = merged[record.id], existing.updatedAt >= record.updatedAt {
-                continue
-            }
-            try save(record)
-            merged[record.id] = record
-        }
     }
 
     private func loadCloudRecordsWithoutMigration() throws -> [CredentialRecord] {
