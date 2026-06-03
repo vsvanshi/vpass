@@ -35,6 +35,9 @@ final class KeychainVault {
     private let decoder = JSONDecoder()
     private let accessGroup: String?
     private let synchronizesWithiCloud: Bool
+    private var canUseSharedCloudVault: Bool {
+        synchronizesWithiCloud && accessGroup != nil
+    }
 
     init(
         userDefaults: UserDefaults = .standard,
@@ -43,7 +46,7 @@ final class KeychainVault {
     ) {
         self.userDefaults = userDefaults
         self.accessGroup = accessGroup
-        self.synchronizesWithiCloud = synchronizesWithiCloud
+        self.synchronizesWithiCloud = synchronizesWithiCloud && accessGroup != nil
         encoder.dateEncodingStrategy = .iso8601
         decoder.dateDecodingStrategy = .iso8601
     }
@@ -66,19 +69,21 @@ final class KeychainVault {
             kSecAttrAccessible as String: kSecAttrAccessibleWhenUnlocked
         ]
         var writeAttributes = attributes
-        if synchronizesWithiCloud {
+        if canUseSharedCloudVault {
             writeAttributes[kSecAttrSynchronizable as String] = true
         }
 
         let updateStatus = SecItemUpdate(query as CFDictionary, writeAttributes as CFDictionary)
         if updateStatus == errSecItemNotFound {
-            query = sharedItemQuery(account: record.id.uuidString, synchronizable: synchronizesWithiCloud ? true : nil)
+            query = sharedItemQuery(account: record.id.uuidString, synchronizable: canUseSharedCloudVault ? true : nil)
             writeAttributes.forEach { query[$0.key] = $0.value }
             let addStatus = SecItemAdd(query as CFDictionary, nil)
             guard addStatus == errSecSuccess else {
                 throw VaultError.keychain(addStatus)
             }
-            try deleteDeletionMarker(id: record.id)
+            if canUseSharedCloudVault {
+                try deleteDeletionMarker(id: record.id)
+            }
             return
         }
 
@@ -86,11 +91,15 @@ final class KeychainVault {
             throw VaultError.keychain(updateStatus)
         }
 
-        try deleteDeletionMarker(id: record.id)
+        if canUseSharedCloudVault {
+            try deleteDeletionMarker(id: record.id)
+        }
     }
 
     func delete(id: UUID) throws {
-        try saveDeletionMarker(id: id, deletedAt: Date())
+        if canUseSharedCloudVault {
+            try saveDeletionMarker(id: id, deletedAt: Date())
+        }
         let status = SecItemDelete(sharedItemQuery(account: id.uuidString, synchronizable: kSecAttrSynchronizableAny) as CFDictionary)
         guard status == errSecSuccess || status == errSecItemNotFound else {
             throw VaultError.keychain(status)
@@ -118,7 +127,7 @@ final class KeychainVault {
         var query = sharedBaseQuery()
         query[kSecReturnAttributes as String] = true
         query[kSecMatchLimit as String] = kSecMatchLimitAll
-        if synchronizesWithiCloud {
+        if canUseSharedCloudVault {
             query[kSecAttrSynchronizable as String] = kSecAttrSynchronizableAny
         }
 
@@ -163,7 +172,7 @@ final class KeychainVault {
     private func sharedItemQuery(account: String, synchronizable: Any?) -> [String: Any] {
         var query = sharedBaseQuery()
         query[kSecAttrAccount as String] = account
-        if synchronizesWithiCloud, let synchronizable {
+        if canUseSharedCloudVault, let synchronizable {
             query[kSecAttrSynchronizable as String] = synchronizable
         }
         return query
@@ -172,7 +181,7 @@ final class KeychainVault {
     private func deletionItemQuery(account: String, synchronizable: Any?) -> [String: Any] {
         var query = deletionBaseQuery()
         query[kSecAttrAccount as String] = account
-        if synchronizesWithiCloud, let synchronizable {
+        if canUseSharedCloudVault, let synchronizable {
             query[kSecAttrSynchronizable as String] = synchronizable
         }
         return query
@@ -191,7 +200,7 @@ final class KeychainVault {
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: service
         ]
-        if synchronizesWithiCloud, let accessGroup {
+        if canUseSharedCloudVault, let accessGroup {
             query[kSecAttrAccessGroup as String] = accessGroup
         }
         return query
@@ -215,13 +224,13 @@ final class KeychainVault {
             kSecAttrAccessible as String: kSecAttrAccessibleWhenUnlocked
         ]
         var writeAttributes = attributes
-        if synchronizesWithiCloud {
+        if canUseSharedCloudVault {
             writeAttributes[kSecAttrSynchronizable as String] = true
         }
 
         let updateStatus = SecItemUpdate(query as CFDictionary, writeAttributes as CFDictionary)
         if updateStatus == errSecItemNotFound {
-            query = deletionItemQuery(account: id.uuidString, synchronizable: synchronizesWithiCloud ? true : nil)
+            query = deletionItemQuery(account: id.uuidString, synchronizable: canUseSharedCloudVault ? true : nil)
             writeAttributes.forEach { query[$0.key] = $0.value }
             let addStatus = SecItemAdd(query as CFDictionary, nil)
             guard addStatus == errSecSuccess else {
@@ -236,6 +245,9 @@ final class KeychainVault {
     }
 
     private func deleteDeletionMarker(id: UUID) throws {
+        guard canUseSharedCloudVault else {
+            return
+        }
         let status = SecItemDelete(deletionItemQuery(account: id.uuidString, synchronizable: kSecAttrSynchronizableAny) as CFDictionary)
         guard status == errSecSuccess || status == errSecItemNotFound else {
             throw VaultError.keychain(status)
@@ -243,10 +255,13 @@ final class KeychainVault {
     }
 
     private func loadDeletionMarkers() throws -> [String: Date] {
+        guard canUseSharedCloudVault else {
+            return [:]
+        }
         var query = deletionBaseQuery()
         query[kSecReturnAttributes as String] = true
         query[kSecMatchLimit as String] = kSecMatchLimitAll
-        if synchronizesWithiCloud {
+        if canUseSharedCloudVault {
             query[kSecAttrSynchronizable as String] = kSecAttrSynchronizableAny
         }
 

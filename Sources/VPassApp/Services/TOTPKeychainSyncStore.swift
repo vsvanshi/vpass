@@ -31,6 +31,9 @@ final class TOTPKeychainSyncStore {
     }
 
     func sync(records: [CredentialRecord]) throws {
+        guard accessGroup != nil else {
+            return
+        }
         let syncedRecords = records.compactMap(SyncedTOTPRecord.init)
         let expectedIDs = Set(syncedRecords.map(\.id.uuidString))
         let existingIDs = try loadSyncedIDs()
@@ -45,6 +48,9 @@ final class TOTPKeychainSyncStore {
     }
 
     func clear() throws {
+        guard accessGroup != nil else {
+            return
+        }
         let status = SecItemDelete(allItemsQuery() as CFDictionary)
         guard status == errSecSuccess || status == errSecItemNotFound else {
             throw TOTPKeychainSyncError.keychain(status)
