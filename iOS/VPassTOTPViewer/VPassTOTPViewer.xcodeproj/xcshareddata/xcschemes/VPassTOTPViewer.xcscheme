@@ -16,7 +16,7 @@
             <BuildableReference
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "2A0000010000000000000401"
-               BuildableName = "VPassTOTPViewer.app"
+               BuildableName = "VPass.app"
                BlueprintName = "VPassTOTPViewer"
                ReferencedContainer = "container:VPassTOTPViewer.xcodeproj">
             </BuildableReference>
@@ -46,7 +46,7 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "2A0000010000000000000401"
-            BuildableName = "VPassTOTPViewer.app"
+            BuildableName = "VPass.app"
             BlueprintName = "VPassTOTPViewer"
             ReferencedContainer = "container:VPassTOTPViewer.xcodeproj">
          </BuildableReference>
@@ -63,7 +63,7 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "2A0000010000000000000401"
-            BuildableName = "VPassTOTPViewer.app"
+            BuildableName = "VPass.app"
             BlueprintName = "VPassTOTPViewer"
             ReferencedContainer = "container:VPassTOTPViewer.xcodeproj">
          </BuildableReference>
