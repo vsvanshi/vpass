@@ -99,6 +99,7 @@ struct ContentView: View {
     @StateObject private var authenticator = AppAuthenticator()
     @Environment(\.scenePhase) private var scenePhase
     @State private var showSplash = true
+    @State private var showingHelp = false
 
     var body: some View {
         ZStack {
@@ -162,14 +163,22 @@ struct ContentView: View {
                     }
                 } else if viewModel.records.isEmpty {
                     ContentUnavailableView {
-                        Label("No Credentials", systemImage: "lock.shield")
+                        Label("Your vault is empty", systemImage: "lock.shield")
                     } description: {
-                        Text("Add a credential here or from VPass on your Mac.")
+                        Text("Add your first login, or scan an authenticator (2FA) QR code. Everything is encrypted on your device and, with iCloud Keychain on, syncs privately across your Apple devices.")
                     } actions: {
-                        Button("Add Credential") {
+                        Button {
                             viewModel.startNew()
+                        } label: {
+                            Label("Add Credential", systemImage: "plus")
                         }
                         .buttonStyle(.borderedProminent)
+                        Button {
+                            showingHelp = true
+                        } label: {
+                            Label("How it works", systemImage: "questionmark.circle")
+                        }
+                        .buttonStyle(.bordered)
                     }
                 } else {
                     VStack(spacing: 0) {
@@ -242,6 +251,14 @@ struct ContentView: View {
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
                     Button {
+                        showingHelp = true
+                    } label: {
+                        Image(systemName: "questionmark.circle")
+                    }
+                    .accessibilityLabel("How VPass works")
+                }
+                ToolbarItem(placement: .topBarLeading) {
+                    Button {
                         viewModel.load()
                     } label: {
                         Image(systemName: "arrow.clockwise")
@@ -266,9 +283,85 @@ struct ContentView: View {
                 onCancel: { viewModel.editor = nil }
             )
         }
+        .sheet(isPresented: $showingHelp) {
+            HelpView()
+        }
         .onAppear {
             viewModel.load()
         }
+    }
+}
+
+private struct HelpView: View {
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        NavigationStack {
+            List {
+                Section {
+                    HelpRow(
+                        icon: "key.fill",
+                        title: "Store logins",
+                        text: "Tap + to save a username, password, website, and notes. Everything is encrypted in your device's Keychain."
+                    )
+                    HelpRow(
+                        icon: "lock.rotation",
+                        title: "Add 2FA codes",
+                        text: "Open a credential, tap Edit, then “Scan QR Code” in the Authenticator section to add a time-based (TOTP) code — or type the secret in manually."
+                    )
+                    HelpRow(
+                        icon: "faceid",
+                        title: "Locked by default",
+                        text: "VPass locks automatically and unlocks with Face ID, Touch ID, or your passcode."
+                    )
+                    HelpRow(
+                        icon: "icloud",
+                        title: "Syncs across your devices",
+                        text: "Turn on iCloud Keychain (Settings → your name → iCloud → Passwords and Keychain) and your vault syncs privately across your Apple devices. No account, no servers — your data never leaves Apple's encrypted Keychain."
+                    )
+                }
+
+                Section {
+                    if let support = URL(string: "https://vsvanshi.github.io/vpass/support.html") {
+                        Link(destination: support) {
+                            Label("Support", systemImage: "lifepreserver")
+                        }
+                    }
+                    if let privacy = URL(string: "https://vsvanshi.github.io/vpass/privacy.html") {
+                        Link(destination: privacy) {
+                            Label("Privacy Policy", systemImage: "hand.raised")
+                        }
+                    }
+                }
+            }
+            .navigationTitle("How VPass works")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Done") { dismiss() }
+                }
+            }
+        }
+    }
+}
+
+private struct HelpRow: View {
+    let icon: String
+    let title: String
+    let text: String
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 12) {
+            Image(systemName: icon)
+                .font(.headline)
+                .foregroundStyle(.blue)
+                .frame(width: 28)
+            VStack(alignment: .leading, spacing: 3) {
+                Text(title).font(.headline)
+                Text(text).font(.subheadline).foregroundStyle(.secondary)
+            }
+        }
+        .padding(.vertical, 4)
     }
 }
 
