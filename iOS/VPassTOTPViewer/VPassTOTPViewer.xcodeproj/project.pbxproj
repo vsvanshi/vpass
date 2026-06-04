@@ -19,6 +19,7 @@
 		2A0000010000000000000010 /* QRCodeScannerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2A0000010000000000000112 /* QRCodeScannerView.swift */; };
 		2A0000010000000000000011 /* AppAuthenticator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2A0000010000000000000113 /* AppAuthenticator.swift */; };
 		2A0000010000000000000012 /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 2A0000010000000000000114 /* LaunchScreen.storyboard */; };
+		2A0000010000000000000013 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 2A0000010000000000000115 /* PrivacyInfo.xcprivacy */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -36,6 +37,7 @@
 		2A0000010000000000000112 /* QRCodeScannerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Views/QRCodeScannerView.swift; sourceTree = "<group>"; };
 		2A0000010000000000000113 /* AppAuthenticator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Services/AppAuthenticator.swift; sourceTree = "<group>"; };
 		2A0000010000000000000114 /* LaunchScreen.storyboard */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; path = LaunchScreen.storyboard; sourceTree = "<group>"; };
+		2A0000010000000000000115 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -72,6 +74,7 @@
 				2A0000010000000000000112 /* QRCodeScannerView.swift */,
 				2A0000010000000000000106 /* Assets.xcassets */,
 				2A0000010000000000000114 /* LaunchScreen.storyboard */,
+				2A0000010000000000000115 /* PrivacyInfo.xcprivacy */,
 				2A0000010000000000000107 /* VPassTOTPViewer.entitlements */,
 			);
 			path = VPassTOTPViewer;
@@ -145,6 +148,7 @@
 			files = (
 				2A0000010000000000000006 /* Assets.xcassets in Resources */,
 				2A0000010000000000000012 /* LaunchScreen.storyboard in Resources */,
+				2A0000010000000000000013 /* PrivacyInfo.xcprivacy in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -300,6 +304,7 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = "VPass";
+				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
 				INFOPLIST_KEY_NSCameraUsageDescription = "VPass uses the camera to scan authenticator QR codes into your encrypted vault.";
 				INFOPLIST_KEY_NSFaceIDUsageDescription = "VPass uses Face ID to unlock your credentials and TOTP codes.";
@@ -333,6 +338,7 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = "VPass";
+				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
 				INFOPLIST_KEY_NSCameraUsageDescription = "VPass uses the camera to scan authenticator QR codes into your encrypted vault.";
 				INFOPLIST_KEY_NSFaceIDUsageDescription = "VPass uses Face ID to unlock your credentials and TOTP codes.";
