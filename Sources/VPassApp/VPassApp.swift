@@ -16,7 +16,9 @@ struct VPassApp: App {
     }
 
     var body: some Scene {
-        WindowGroup("VPass", id: "main") {
+        // Single, unique window (not WindowGroup) so "Open VPass" reuses one
+        // instance instead of spawning a new window each time.
+        Window("VPass", id: "main") {
             ContentView()
                 .environmentObject(viewModel)
                 .environmentObject(authenticator)
@@ -54,6 +56,14 @@ final class VPassAppDelegate: NSObject, NSApplicationDelegate {
             self.hideWindows()
             return nil
         }
+        // Sparkle needs the app to actually terminate to relaunch the updated
+        // build; this lets it bypass the "hide instead of quit" behavior.
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(allowTerminationForUpdate),
+            name: .vPassAllowTerminationForUpdate,
+            object: nil
+        )
     }
 
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
@@ -63,6 +73,10 @@ final class VPassAppDelegate: NSObject, NSApplicationDelegate {
 
         hideWindows()
         return .terminateCancel
+    }
+
+    @objc private func allowTerminationForUpdate() {
+        allowsQuit = true
     }
 
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
@@ -126,9 +140,7 @@ private struct MenuBarRootView: View {
 
             HStack(spacing: 10) {
                 Button {
-                    NSApplication.shared.setActivationPolicy(.regular)
-                    openWindow(id: "main")
-                    NSApplication.shared.activate(ignoringOtherApps: true)
+                    showMainWindow()
                 } label: {
                     Label("Open VPass", systemImage: "macwindow")
                 }
@@ -153,5 +165,20 @@ private struct MenuBarRootView: View {
             .padding(.vertical, 10)
         }
         .frame(width: 420)
+    }
+
+    private func showMainWindow() {
+        NSApplication.shared.setActivationPolicy(.regular)
+        // Reuse the existing main window if it's around (even if hidden via
+        // orderOut); only create one if none exists. Prevents duplicate windows.
+        if let existing = NSApplication.shared.windows.first(where: { $0.styleMask.contains(.titled) }) {
+            if existing.isMiniaturized {
+                existing.deminiaturize(nil)
+            }
+            existing.makeKeyAndOrderFront(nil)
+        } else {
+            openWindow(id: "main")
+        }
+        NSApplication.shared.activate(ignoringOtherApps: true)
     }
 }
