@@ -608,7 +608,14 @@ private struct CredentialDetailView: View {
         List {
             Section {
                 LabeledContent("Username") {
-                    CopyButton(text: record.username, label: "Username", copiedValue: $copiedValue)
+                    HStack {
+                        Text(record.username.isEmpty ? "—" : record.username)
+                            .foregroundStyle(record.username.isEmpty ? .secondary : .primary)
+                            .lineLimit(1)
+                            .truncationMode(.middle)
+                            .textSelection(.enabled)
+                        CopyButton(text: record.username, label: "Username", copiedValue: $copiedValue)
+                    }
                 }
                 LabeledContent("Password") {
                     HStack {
