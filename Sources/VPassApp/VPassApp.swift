@@ -64,10 +64,16 @@ final class VPassAppDelegate: NSObject, NSApplicationDelegate {
             name: .vPassAllowTerminationForUpdate,
             object: nil
         )
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(revokeTerminationForUpdate),
+            name: .vPassRevokeTerminationForUpdate,
+            object: nil
+        )
     }
 
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
-        if allowsQuit {
+        if allowsQuit || isSystemInitiatedTermination {
             return .terminateNow
         }
 
@@ -75,8 +81,25 @@ final class VPassAppDelegate: NSObject, NSApplicationDelegate {
         return .terminateCancel
     }
 
+    // Logout, shutdown, and restart deliver a quit Apple event that carries a
+    // kAEQuitReason ("why?") attribute; user-initiated quits don't. Cancelling
+    // those makes macOS abort the whole logout with "VPass interrupted
+    // shutdown", so let them through (the process is going away regardless).
+    private var isSystemInitiatedTermination: Bool {
+        guard let event = NSAppleEventManager.shared().currentAppleEvent,
+              event.eventClass == AEEventClass(kCoreEventClass),
+              event.eventID == AEEventID(kAEQuitApplication) else {
+            return false
+        }
+        return event.attributeDescriptor(forKeyword: AEKeyword(kAEQuitReason)) != nil
+    }
+
     @objc private func allowTerminationForUpdate() {
         allowsQuit = true
+    }
+
+    @objc private func revokeTerminationForUpdate() {
+        allowsQuit = false
     }
 
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
@@ -168,6 +191,14 @@ private struct MenuBarRootView: View {
     }
 
     private func showMainWindow() {
+        // The tray panel doesn't auto-dismiss on button clicks and holds key
+        // status; while it's up, the main window orders front but never
+        // becomes key. Close it before handing focus over.
+        for window in NSApplication.shared.windows
+        where window.isVisible && !window.styleMask.contains(.titled) && window.level != .normal {
+            window.orderOut(nil)
+        }
+
         NSApplication.shared.setActivationPolicy(.regular)
         // Reuse the existing main window if it's around (even if hidden via
         // orderOut); only create one if none exists. Prevents duplicate windows.
@@ -179,6 +210,17 @@ private struct MenuBarRootView: View {
         } else {
             openWindow(id: "main")
         }
-        NSApplication.shared.activate(ignoringOtherApps: true)
+        // Activating in the same runloop turn as the accessory→regular policy
+        // flip silently fails; defer so activation targets the (re)created
+        // window. The second, delayed pass covers openWindow's window not
+        // existing yet on the first turn.
+        for delay in [0.0, 0.25] {
+            DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
+                NSApplication.shared.activate(ignoringOtherApps: true)
+                NSApplication.shared.windows
+                    .first { $0.styleMask.contains(.titled) }?
+                    .makeKeyAndOrderFront(nil)
+            }
+        }
     }
 }

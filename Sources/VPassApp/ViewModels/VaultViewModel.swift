@@ -28,6 +28,14 @@ final class VaultViewModel: ObservableObject {
     private let totpSyncEnabledDefaultsKey = "totpSyncEnabled"
     private let lastTOTPSyncAtDefaultsKey = "lastTOTPSyncAt"
     private var automaticBackupTask: Task<Void, Never>?
+    private var pendingAutomaticBackupTask: Task<Void, Never>?
+    private var clipboardClearTask: Task<Void, Never>?
+
+    // De-facto standard type that tells clipboard managers not to record the
+    // item (http://nspasteboard.org). Marked on every secret we copy.
+    private static let concealedPasteboardType = NSPasteboard.PasteboardType("org.nspasteboard.ConcealedType")
+    private static let clipboardClearDelaySeconds = 40
+    private static let automaticBackupDebounceSeconds = 5
 
     init(
         vault: KeychainVault,
@@ -191,13 +199,33 @@ final class VaultViewModel: ObservableObject {
         }
     }
 
-    func copyToClipboard(_ value: String, label: String) {
+    func copyToClipboard(_ value: String, label: String, concealed: Bool = false) {
         guard !value.isEmpty else {
             return
         }
-        NSPasteboard.general.clearContents()
-        NSPasteboard.general.setString(value, forType: .string)
-            statusMessage = "Copied \(label)."
+        let pasteboard = NSPasteboard.general
+        pasteboard.clearContents()
+        if concealed {
+            pasteboard.setString("", forType: Self.concealedPasteboardType)
+        }
+        pasteboard.setString(value, forType: .string)
+        statusMessage = "Copied \(label)."
+
+        clipboardClearTask?.cancel()
+        guard concealed else {
+            return
+        }
+        // Clear the secret after a grace period — but only if the clipboard
+        // still holds what we put there (changeCount ticks on any new copy).
+        let changeCount = pasteboard.changeCount
+        clipboardClearTask = Task { [weak self] in
+            try? await Task.sleep(for: .seconds(Self.clipboardClearDelaySeconds))
+            guard !Task.isCancelled, NSPasteboard.general.changeCount == changeCount else {
+                return
+            }
+            NSPasteboard.general.clearContents()
+            self?.statusMessage = "Clipboard cleared."
+        }
     }
 
     func selectTag(_ tag: VaultTag) {
@@ -269,6 +297,7 @@ final class VaultViewModel: ObservableObject {
         }
         do {
             automaticBackupTask?.cancel()
+            pendingAutomaticBackupTask?.cancel()
             try backupConfigurationStore.clear()
             automaticBackupErrorMessage = nil
             isAutomaticBackupRunning = false
@@ -478,6 +507,29 @@ final class VaultViewModel: ObservableObject {
     private func markVaultChanged(at date: Date = Date()) {
         userDefaults.set(date, forKey: lastVaultChangeAtDefaultsKey)
         automaticBackupErrorMessage = nil
+        scheduleAutomaticBackup()
+    }
+
+    // Every vault change queues a managed backup (debounced so a burst of
+    // edits produces one write). Without this the "automatic" backup only
+    // ever ran from the manual Back Up Now buttons.
+    private func scheduleAutomaticBackup() {
+        guard backupConfigurationStore.isConfigured() else {
+            return
+        }
+        pendingAutomaticBackupTask?.cancel()
+        pendingAutomaticBackupTask = Task { [weak self] in
+            try? await Task.sleep(for: .seconds(Self.automaticBackupDebounceSeconds))
+            // If a backup is already mid-flight, wait it out instead of letting
+            // runManagedBackupNow drop this change on its early-return.
+            while !Task.isCancelled, self?.isAutomaticBackupRunning == true {
+                try? await Task.sleep(for: .seconds(1))
+            }
+            guard !Task.isCancelled else {
+                return
+            }
+            self?.runManagedBackupNow()
+        }
     }
 
     private func markBackupCompleted(at date: Date = Date()) {

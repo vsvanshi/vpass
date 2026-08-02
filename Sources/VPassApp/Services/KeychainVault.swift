@@ -1,5 +1,4 @@
 import Foundation
-import LocalAuthentication
 import Security
 
 enum VaultError: LocalizedError {
@@ -345,7 +344,13 @@ final class KeychainVault {
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: legacyService,
             kSecAttrAccount as String: account,
-            kSecUseAuthenticationContext as String: nonInteractiveKeychainContext()
+            // Fail instead of prompting. Deliberately uses the deprecated flag:
+            // Apple's suggested replacement (LAContext.interactionNotAllowed)
+            // only suppresses LocalAuthentication UI, while legacy login-
+            // keychain items whose ACL doesn't match this binary's signature
+            // (any dev build) still throw SecurityAgent "allow access" dialogs,
+            // one per item, in a loop. Only this flag stops those.
+            kSecUseAuthenticationUI as String: kSecUseAuthenticationUIFail
         ]
     }
 
@@ -355,15 +360,10 @@ final class KeychainVault {
             kSecAttrService as String: service
         ]
         if !allowsAuthentication {
-            query[kSecUseAuthenticationContext as String] = nonInteractiveKeychainContext()
+            // See legacyBaseQuery — fail rather than prompt.
+            query[kSecUseAuthenticationUI as String] = kSecUseAuthenticationUIFail
         }
         return query
-    }
-
-    private func nonInteractiveKeychainContext() -> LAContext {
-        let context = LAContext()
-        context.interactionNotAllowed = true
-        return context
     }
 
     private func localVaultItemQuery(account: String, allowsAuthentication: Bool = false) -> [String: Any] {

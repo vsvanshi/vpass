@@ -186,14 +186,14 @@ private struct QuickCredentialRow: View {
                 .disabled(record.username.isEmpty)
 
                 QuickCopyButton(help: "Copy password", systemImage: "key") {
-                    viewModel.copyToClipboard(record.password, label: "password")
+                    viewModel.copyToClipboard(record.password, label: "password", concealed: true)
                     onCopy("password")
                 }
                 .disabled(record.password.isEmpty)
 
                 if !record.totpSecretBase32.isEmpty {
                     QuickTOTPButton(record: record) { code in
-                        viewModel.copyToClipboard(code, label: "TOTP")
+                        viewModel.copyToClipboard(code, label: "TOTP", concealed: true)
                         onCopy("TOTP")
                     }
                 }

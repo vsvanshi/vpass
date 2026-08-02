@@ -3,6 +3,8 @@ import SwiftUI
 struct ContentView: View {
     @EnvironmentObject private var viewModel: VaultViewModel
     @EnvironmentObject private var authenticator: AppAuthenticator
+    // Keeps the Expired / Next 30d counts recomputing as the day rolls over.
+    @ObservedObject private var dayClock = DayClock.shared
     @AppStorage("layout.passwordListColumnWidth") private var passwordListColumnWidth = 360.0
     @AppStorage("layout.sidebarColumnWidth") private var sidebarColumnWidth = 220.0
     @State private var showingSettings = false
@@ -45,6 +47,18 @@ struct ContentView: View {
         .onAppear {
             authenticator.unlockIfRecentlyAuthenticated()
         }
+        // The red close button bypasses applicationShouldTerminate, so without
+        // this the vault stayed unlocked indefinitely and the Dock icon stuck
+        // around with no window. Mirror the ⌘Q path: lock and drop to the menu
+        // bar. The policy switch is deferred a runloop turn — flipping it
+        // inside willClose (while the window is still key) can leave the Dock
+        // icon behind.
+        .background(WindowCloseObserver {
+            AppAuthenticator.shared.lock()
+            DispatchQueue.main.async {
+                NSApplication.shared.setActivationPolicy(.accessory)
+            }
+        })
     }
 
     private var unlockedContent: some View {
@@ -181,6 +195,66 @@ struct ContentView: View {
 
 }
 
+/// Runs `onClose` when the window hosting this view closes. Scoped to that
+/// specific NSWindow so sheets, Sparkle dialogs, and other windows don't
+/// trigger it. Note: hide-to-menu-bar uses orderOut, which does NOT fire
+/// willClose, so the ⌘Q path never double-locks through this.
+private struct WindowCloseObserver: NSViewRepresentable {
+    let onClose: @MainActor @Sendable () -> Void
+
+    func makeNSView(context: Context) -> WindowObservingView {
+        let view = WindowObservingView()
+        let coordinator = context.coordinator
+        let onClose = onClose
+        view.onWindowChange = { window in
+            coordinator.attach(to: window, onClose: onClose)
+        }
+        return view
+    }
+
+    func updateNSView(_ nsView: WindowObservingView, context: Context) {
+        context.coordinator.attach(to: nsView.window, onClose: onClose)
+    }
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator()
+    }
+
+    final class WindowObservingView: NSView {
+        var onWindowChange: ((NSWindow?) -> Void)?
+
+        override func viewDidMoveToWindow() {
+            super.viewDidMoveToWindow()
+            onWindowChange?(window)
+        }
+    }
+
+    @MainActor
+    final class Coordinator {
+        private weak var observedWindow: NSWindow?
+        private var token: NSObjectProtocol?
+
+        func attach(to window: NSWindow?, onClose: @escaping @MainActor @Sendable () -> Void) {
+            guard let window, window !== observedWindow else {
+                return
+            }
+            if let token {
+                NotificationCenter.default.removeObserver(token)
+            }
+            observedWindow = window
+            token = NotificationCenter.default.addObserver(
+                forName: NSWindow.willCloseNotification,
+                object: window,
+                queue: .main
+            ) { _ in
+                MainActor.assumeIsolated {
+                    onClose()
+                }
+            }
+        }
+    }
+}
+
 /// Persists a navigation column's live width so it can be fed back as the
 /// column's `ideal` width on the next app launch. Within a session the
 /// columns keep their size because the split view is never torn down.
@@ -196,7 +270,12 @@ private struct ColumnWidthReporter: View {
                     guard range.contains(width), abs(storedWidth - width) >= 1 else {
                         return
                     }
-                    storedWidth = width
+                    // Defer the write: mutating AppStorage while the split view
+                    // is mid-layout trips AppKit's layoutSubtreeIfNeeded
+                    // recursion warning.
+                    DispatchQueue.main.async {
+                        storedWidth = width
+                    }
                 }
         }
     }
@@ -238,6 +317,8 @@ private struct LockedVaultView: View {
 private struct SettingsView: View {
     @EnvironmentObject private var viewModel: VaultViewModel
     @Environment(\.dismiss) private var dismiss
+    @AppStorage(AppAuthenticator.autoLockMinutesDefaultsKey)
+    private var autoLockMinutes = AppAuthenticator.autoLockMinutesDefault
 
     var body: some View {
         VStack(alignment: .leading, spacing: 18) {
@@ -259,6 +340,7 @@ private struct SettingsView: View {
 
             ScrollView {
                 VStack(alignment: .leading, spacing: 14) {
+                    securitySection
                     recoverySection
                     totpSyncSection
                 }
@@ -273,9 +355,41 @@ private struct SettingsView: View {
         .padding(22)
     }
 
+    private var securitySection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Label("Security", systemImage: "lock.shield")
+                .font(.headline)
+
+            HStack {
+                Text("Auto-lock after inactivity")
+                    .foregroundStyle(.secondary)
+                Spacer()
+                Picker("Auto-lock after inactivity", selection: $autoLockMinutes) {
+                    Text("Never").tag(0)
+                    Text("1 minute").tag(1)
+                    Text("5 minutes").tag(5)
+                    Text("10 minutes").tag(10)
+                    Text("15 minutes").tag(15)
+                    Text("30 minutes").tag(30)
+                    Text("1 hour").tag(60)
+                }
+                .labelsHidden()
+                .frame(width: 140)
+            }
+            .font(.subheadline)
+
+            Text("Locks the vault when VPass hasn't been used for this long. Closing the window locks it immediately.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
+        .padding(16)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(.quaternary.opacity(0.35), in: RoundedRectangle(cornerRadius: 8))
+    }
+
     private var recoverySection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Label("Recovery", systemImage: "externaldrive.badge.shield.checkmark")
+            Label("Recovery", systemImage: "externaldrive.badge.checkmark")
                 .font(.headline)
 
             SettingsInfoRow(
@@ -360,7 +474,7 @@ private struct SettingsView: View {
             Button {
                 viewModel.recoverLocalOnlyCredentials()
             } label: {
-                Label("Recover Local Items", systemImage: "arrow.down.key")
+                Label("Recover Local Items", systemImage: "key.icloud")
             }
             .disabled(!viewModel.isCloudKeychainSyncAvailable)
             .help("Recover older local-only credentials and TOTP secrets into the shared iCloud vault")
@@ -460,6 +574,9 @@ private struct ExpiryMetric: View {
 }
 
 private struct CredentialListRow: View {
+    // List rows only re-render when their inputs change, so the day-based
+    // labels below have to observe the clock or they freeze at launch day.
+    @ObservedObject private var dayClock = DayClock.shared
     let record: CredentialRecord
 
     private var displayTitle: String {
@@ -587,10 +704,6 @@ private struct CredentialListRow: View {
     }
 
     private func daysUntil(_ date: Date) -> Int {
-        Calendar.current.dateComponents(
-            [.day],
-            from: Calendar.current.startOfDay(for: Date()),
-            to: Calendar.current.startOfDay(for: date)
-        ).day ?? 0
+        dayClock.daysUntil(date)
     }
 }

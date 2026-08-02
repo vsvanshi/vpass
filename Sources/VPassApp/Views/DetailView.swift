@@ -2,6 +2,7 @@ import SwiftUI
 
 struct DetailView: View {
     @EnvironmentObject private var viewModel: VaultViewModel
+    @ObservedObject private var dayClock = DayClock.shared
     @State private var showingDeleteConfirmation = false
     let record: CredentialRecord?
 
@@ -70,8 +71,18 @@ struct DetailView: View {
             Text(record.title.isEmpty ? "Untitled" : record.title)
                 .font(.largeTitle.bold())
             if !record.url.isEmpty {
-                Link(record.url, destination: URL(string: record.url.hasPrefix("http") ? record.url : "https://\(record.url)")!)
-                    .font(.callout)
+                // Users type free text into the Website field ("internal vpn
+                // box"); URL(string:) returns nil for that, so fall back to
+                // plain text instead of force-unwrapping into a crash.
+                if let destination = Self.linkURL(from: record.url) {
+                    Link(record.url, destination: destination)
+                        .font(.callout)
+                } else {
+                    Text(record.url)
+                        .font(.callout)
+                        .foregroundStyle(.secondary)
+                        .textSelection(.enabled)
+                }
             }
             Label("Last updated \(record.updatedAt.formatted(date: .abbreviated, time: .shortened))", systemImage: "clock")
                 .font(.caption)
@@ -79,8 +90,16 @@ struct DetailView: View {
         }
     }
 
+    private static func linkURL(from raw: String) -> URL? {
+        let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else {
+            return nil
+        }
+        return URL(string: trimmed.hasPrefix("http") ? trimmed : "https://\(trimmed)")
+    }
+
     private func expiryPanel(_ expiresAt: Date) -> some View {
-        let status = ExpiryStatus(date: expiresAt)
+        let status = ExpiryStatus(date: expiresAt, today: dayClock.today)
         return HStack(spacing: 10) {
             Image(systemName: status.systemImage)
                 .foregroundStyle(status.color)
@@ -102,11 +121,11 @@ struct DetailView: View {
     private func credentialRows(_ record: CredentialRecord) -> some View {
         Grid(alignment: .leading, horizontalSpacing: 16, verticalSpacing: 14) {
             row("Username", value: record.username, copyLabel: "username")
-            row("Password", value: record.password.isEmpty ? "" : String(repeating: "•", count: 12), copyValue: record.password, copyLabel: "password")
+            row("Password", value: record.password.isEmpty ? "" : String(repeating: "•", count: 12), copyValue: record.password, copyLabel: "password", concealed: true)
         }
     }
 
-    private func row(_ title: String, value: String, copyValue: String? = nil, copyLabel: String) -> some View {
+    private func row(_ title: String, value: String, copyValue: String? = nil, copyLabel: String, concealed: Bool = false) -> some View {
         GridRow {
             Text(title)
                 .foregroundStyle(.secondary)
@@ -115,7 +134,7 @@ struct DetailView: View {
                 .textSelection(.enabled)
                 .monospaced(value != "Not set")
             Button {
-                viewModel.copyToClipboard(copyValue ?? value, label: copyLabel)
+                viewModel.copyToClipboard(copyValue ?? value, label: copyLabel, concealed: concealed)
             } label: {
                 Label("Copy", systemImage: "doc.on.doc")
             }
@@ -146,7 +165,7 @@ struct DetailView: View {
                         .foregroundStyle(.secondary)
                         .monospacedDigit()
                     Button {
-                        viewModel.copyToClipboard(code, label: "TOTP")
+                        viewModel.copyToClipboard(code, label: "TOTP", concealed: true)
                     } label: {
                         Label("Copy", systemImage: "doc.on.doc")
                     }
@@ -171,7 +190,8 @@ struct DetailView: View {
                         field.key,
                         value: field.isSensitive ? String(repeating: "•", count: 10) : field.value,
                         copyValue: field.value,
-                        copyLabel: field.key
+                        copyLabel: field.key,
+                        concealed: field.isSensitive
                     )
                 }
             }
@@ -191,15 +211,12 @@ struct DetailView: View {
 
 private struct ExpiryStatus {
     let date: Date
-
-    private var startOfToday: Date {
-        Calendar.current.startOfDay(for: Date())
-    }
+    let today: Date
 
     private var daysRemaining: Int {
         Calendar.current.dateComponents(
             [.day],
-            from: startOfToday,
+            from: today,
             to: Calendar.current.startOfDay(for: date)
         ).day ?? 0
     }

@@ -1,5 +1,4 @@
 import Foundation
-import LocalAuthentication
 import Security
 
 enum BackupConfigurationError: LocalizedError {
@@ -177,13 +176,14 @@ final class BackupConfigurationStore {
         }
 
         // Read any password left in the file-based keychain WITHOUT prompting,
-        // and re-save it into the data protection keychain.
-        let context = LAContext()
-        context.interactionNotAllowed = true
+        // and re-save it into the data protection keychain. The UI-fail flag
+        // (not an interactionNotAllowed LAContext, which only covers
+        // LocalAuthentication) is what suppresses the SecurityAgent "allow
+        // access" dialog for ACL-mismatched dev builds.
         var query = baseQuery(dataProtection: false)
         query[kSecReturnData as String] = true
         query[kSecMatchLimit as String] = kSecMatchLimitOne
-        query[kSecUseAuthenticationContext as String] = context
+        query[kSecUseAuthenticationUI as String] = kSecUseAuthenticationUIFail
 
         var result: CFTypeRef?
         let status = SecItemCopyMatching(query as CFDictionary, &result)
