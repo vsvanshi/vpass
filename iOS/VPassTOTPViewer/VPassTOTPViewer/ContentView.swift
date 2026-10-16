@@ -1,4 +1,5 @@
 import SwiftUI
+import UniformTypeIdentifiers
 
 @MainActor
 final class VaultListViewModel: ObservableObject {
@@ -627,7 +628,7 @@ private struct CredentialDetailView: View {
                             Image(systemName: revealPassword ? "eye.slash" : "eye")
                         }
                         .buttonStyle(.plain)
-                        CopyButton(text: record.password, label: "Password", copiedValue: $copiedValue)
+                        CopyButton(text: record.password, label: "Password", concealed: true, copiedValue: $copiedValue)
                     }
                 }
                 if !record.url.isEmpty {
@@ -650,7 +651,7 @@ private struct CredentialDetailView: View {
                     ForEach(record.customFields) { field in
                         LabeledContent(field.key) {
                             if field.isSensitive {
-                                CopyButton(text: field.value, label: field.key, copiedValue: $copiedValue)
+                                CopyButton(text: field.value, label: field.key, concealed: true, copiedValue: $copiedValue)
                             } else {
                                 Text(field.value)
                             }
@@ -720,7 +721,7 @@ private struct TOTPCodeView: View {
                     .font(.system(.title2, design: .monospaced).weight(.semibold))
                 CircularCountdown(progress: progress, remaining: remaining)
                 Spacer()
-                CopyButton(text: code, label: "TOTP", copiedValue: $copiedValue)
+                CopyButton(text: code, label: "TOTP", concealed: true, copiedValue: $copiedValue)
             }
         }
     }
@@ -952,11 +953,26 @@ private enum GroupMode: Hashable {
 private struct CopyButton: View {
     let text: String
     let label: String
+    var concealed = false
     @Binding var copiedValue: String?
+
+    private static let clipboardClearDelaySeconds: TimeInterval = 40
 
     var body: some View {
         Button {
-            UIPasteboard.general.string = text
+            if concealed {
+                // Keep secrets off Universal Clipboard and let iOS clear them
+                // after a grace period, even if VPass is suspended by then.
+                UIPasteboard.general.setItems(
+                    [[UTType.plainText.identifier: text]],
+                    options: [
+                        .localOnly: true,
+                        .expirationDate: Date().addingTimeInterval(Self.clipboardClearDelaySeconds)
+                    ]
+                )
+            } else {
+                UIPasteboard.general.string = text
+            }
             withAnimation(.snappy(duration: 0.18)) {
                 copiedValue = label
             }
