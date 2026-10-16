@@ -1,25 +1,25 @@
 import Foundation
 
-struct CredentialRecord: Identifiable, Codable, Equatable, Sendable {
-    var id: UUID
-    var tag: String
-    var groupName: String
-    var title: String
-    var username: String
-    var password: String
-    var url: String
-    var expiresAt: Date?
-    var notes: String
-    var customFields: [CustomField]
-    var totpSecretBase32: String
-    var totpIssuer: String
-    var totpAccount: String
-    var totpPeriod: Int
-    var totpDigits: Int
-    var createdAt: Date
-    var updatedAt: Date
+public struct CredentialRecord: Identifiable, Codable, Equatable, Sendable {
+    public var id: UUID
+    public var tag: String
+    public var groupName: String
+    public var title: String
+    public var username: String
+    public var password: String
+    public var url: String
+    public var expiresAt: Date?
+    public var notes: String
+    public var customFields: [CustomField]
+    public var totpSecretBase32: String
+    public var totpIssuer: String
+    public var totpAccount: String
+    public var totpPeriod: Int
+    public var totpDigits: Int
+    public var createdAt: Date
+    public var updatedAt: Date
 
-    init(
+    public init(
         id: UUID = UUID(),
         tag: String = VaultTag.personal.name,
         groupName: String = "General",
@@ -77,7 +77,7 @@ struct CredentialRecord: Identifiable, Codable, Equatable, Sendable {
         case updatedAt
     }
 
-    init(from decoder: Decoder) throws {
+    public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         id = try container.decode(UUID.self, forKey: .id)
         tag = try container.decodeIfPresent(String.self, forKey: .tag) ?? VaultTag.personal.name
@@ -100,7 +100,15 @@ struct CredentialRecord: Identifiable, Codable, Equatable, Sendable {
 }
 
 extension CredentialRecord {
-    func matchesSearch(_ query: String) -> Bool {
+    public var displayGroup: String {
+        groupName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "General" : groupName
+    }
+
+    public var hasTOTP: Bool {
+        !totpSecretBase32.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
+    public func matchesSearch(_ query: String) -> Bool {
         let tokens = query.searchTokens
         guard !tokens.isEmpty else {
             return true
@@ -136,25 +144,25 @@ private extension String {
     }
 }
 
-struct VaultTag: Identifiable, Equatable, Sendable {
-    var id: String { name }
-    let name: String
-    let systemImage: String
+public struct VaultTag: Identifiable, Equatable, Sendable {
+    public var id: String { name }
+    public let name: String
+    public let systemImage: String
 
-    static let personal = VaultTag(name: "Personal", systemImage: "person")
-    static let work = VaultTag(name: "Work", systemImage: "briefcase")
-    static let finance = VaultTag(name: "Finance", systemImage: "creditcard")
-    static let servers = VaultTag(name: "Servers", systemImage: "server.rack")
-    static let all: [VaultTag] = [.personal, .work, .finance, .servers]
+    public static let personal = VaultTag(name: "Personal", systemImage: "person")
+    public static let work = VaultTag(name: "Work", systemImage: "briefcase")
+    public static let finance = VaultTag(name: "Finance", systemImage: "creditcard")
+    public static let servers = VaultTag(name: "Servers", systemImage: "server.rack")
+    public static let all: [VaultTag] = [.personal, .work, .finance, .servers]
 }
 
-struct CustomField: Identifiable, Codable, Equatable, Sendable {
-    var id: UUID
-    var key: String
-    var value: String
-    var isSensitive: Bool
+public struct CustomField: Identifiable, Codable, Equatable, Sendable {
+    public var id: UUID
+    public var key: String
+    public var value: String
+    public var isSensitive: Bool
 
-    init(id: UUID = UUID(), key: String = "", value: String = "", isSensitive: Bool = true) {
+    public init(id: UUID = UUID(), key: String = "", value: String = "", isSensitive: Bool = true) {
         self.id = id
         self.key = key
         self.value = value
@@ -162,26 +170,26 @@ struct CustomField: Identifiable, Codable, Equatable, Sendable {
     }
 }
 
-struct CredentialDraft: Identifiable, Equatable, Sendable {
-    var id: UUID
-    var tag: String
-    var groupName: String
-    var title: String
-    var username: String
-    var password: String
-    var url: String
-    var hasExpiry: Bool
-    var expiresAt: Date
-    var notes: String
-    var customFields: [CustomField]
-    var totpSecretBase32: String
-    var totpIssuer: String
-    var totpAccount: String
-    var totpPeriod: Int
-    var totpDigits: Int
-    var createdAt: Date
+public struct CredentialDraft: Identifiable, Equatable, Sendable {
+    public var id: UUID
+    public var tag: String
+    public var groupName: String
+    public var title: String
+    public var username: String
+    public var password: String
+    public var url: String
+    public var hasExpiry: Bool
+    public var expiresAt: Date
+    public var notes: String
+    public var customFields: [CustomField]
+    public var totpSecretBase32: String
+    public var totpIssuer: String
+    public var totpAccount: String
+    public var totpPeriod: Int
+    public var totpDigits: Int
+    public var createdAt: Date
 
-    init(record: CredentialRecord? = nil) {
+    public init(record: CredentialRecord? = nil) {
         let record = record ?? CredentialRecord()
         self.id = record.id
         self.tag = record.tag
@@ -202,7 +210,7 @@ struct CredentialDraft: Identifiable, Equatable, Sendable {
         self.createdAt = record.createdAt
     }
 
-    func record() -> CredentialRecord {
+    public func record() -> CredentialRecord {
         CredentialRecord(
             id: id,
             tag: tag.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? VaultTag.personal.name : tag.trimmingCharacters(in: .whitespacesAndNewlines),

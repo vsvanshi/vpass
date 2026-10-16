@@ -9,31 +9,22 @@
 /* Begin PBXBuildFile section */
 		2A0000010000000000000001 /* VPassTOTPViewerApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2A0000010000000000000101 /* VPassTOTPViewerApp.swift */; };
 		2A0000010000000000000002 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2A0000010000000000000102 /* ContentView.swift */; };
-		2A0000010000000000000003 /* SyncedTOTPRecord.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2A0000010000000000000103 /* SyncedTOTPRecord.swift */; };
-		2A0000010000000000000004 /* TOTPGenerator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2A0000010000000000000104 /* TOTPGenerator.swift */; };
-		2A0000010000000000000005 /* TOTPKeychainReader.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2A0000010000000000000105 /* TOTPKeychainReader.swift */; };
 		2A0000010000000000000006 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 2A0000010000000000000106 /* Assets.xcassets */; };
-		2A0000010000000000000007 /* CredentialRecord.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2A0000010000000000000109 /* CredentialRecord.swift */; };
 		2A0000010000000000000008 /* VaultKeychainStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2A0000010000000000000110 /* VaultKeychainStore.swift */; };
-		2A0000010000000000000009 /* OTPAuthParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2A0000010000000000000111 /* OTPAuthParser.swift */; };
 		2A0000010000000000000010 /* QRCodeScannerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2A0000010000000000000112 /* QRCodeScannerView.swift */; };
 		2A0000010000000000000011 /* AppAuthenticator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2A0000010000000000000113 /* AppAuthenticator.swift */; };
 		2A0000010000000000000012 /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 2A0000010000000000000114 /* LaunchScreen.storyboard */; };
 		2A0000010000000000000013 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 2A0000010000000000000115 /* PrivacyInfo.xcprivacy */; };
+		2A0000010000000000000014 /* VPassCore in Frameworks */ = {isa = PBXBuildFile; productRef = 2A0000010000000000000902 /* VPassCore */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
 		2A0000010000000000000101 /* VPassTOTPViewerApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VPassTOTPViewerApp.swift; sourceTree = "<group>"; };
 		2A0000010000000000000102 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
-		2A0000010000000000000103 /* SyncedTOTPRecord.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Models/SyncedTOTPRecord.swift; sourceTree = "<group>"; };
-		2A0000010000000000000104 /* TOTPGenerator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Services/TOTPGenerator.swift; sourceTree = "<group>"; };
-		2A0000010000000000000105 /* TOTPKeychainReader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Services/TOTPKeychainReader.swift; sourceTree = "<group>"; };
 		2A0000010000000000000106 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		2A0000010000000000000107 /* VPassTOTPViewer.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = VPassTOTPViewer.entitlements; sourceTree = "<group>"; };
 		2A0000010000000000000108 /* VPassTOTPViewer.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = VPassTOTPViewer.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		2A0000010000000000000109 /* CredentialRecord.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Models/CredentialRecord.swift; sourceTree = "<group>"; };
 		2A0000010000000000000110 /* VaultKeychainStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Services/VaultKeychainStore.swift; sourceTree = "<group>"; };
-		2A0000010000000000000111 /* OTPAuthParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Services/OTPAuthParser.swift; sourceTree = "<group>"; };
 		2A0000010000000000000112 /* QRCodeScannerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Views/QRCodeScannerView.swift; sourceTree = "<group>"; };
 		2A0000010000000000000113 /* AppAuthenticator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Services/AppAuthenticator.swift; sourceTree = "<group>"; };
 		2A0000010000000000000114 /* LaunchScreen.storyboard */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; path = LaunchScreen.storyboard; sourceTree = "<group>"; };
@@ -45,6 +36,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				2A0000010000000000000014 /* VPassCore in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -64,12 +56,7 @@
 			children = (
 				2A0000010000000000000101 /* VPassTOTPViewerApp.swift */,
 				2A0000010000000000000102 /* ContentView.swift */,
-				2A0000010000000000000103 /* SyncedTOTPRecord.swift */,
-				2A0000010000000000000109 /* CredentialRecord.swift */,
-				2A0000010000000000000104 /* TOTPGenerator.swift */,
-				2A0000010000000000000105 /* TOTPKeychainReader.swift */,
 				2A0000010000000000000110 /* VaultKeychainStore.swift */,
-				2A0000010000000000000111 /* OTPAuthParser.swift */,
 				2A0000010000000000000113 /* AppAuthenticator.swift */,
 				2A0000010000000000000112 /* QRCodeScannerView.swift */,
 				2A0000010000000000000106 /* Assets.xcassets */,
@@ -103,6 +90,9 @@
 			);
 			dependencies = (
 			);
+			packageProductDependencies = (
+				2A0000010000000000000902 /* VPassCore */,
+			);
 			name = VPassTOTPViewer;
 			productName = VPassTOTPViewer;
 			productReference = 2A0000010000000000000108 /* VPassTOTPViewer.app */;
@@ -132,6 +122,9 @@
 				Base,
 			);
 			mainGroup = 2A0000010000000000000301;
+			packageReferences = (
+				2A0000010000000000000901 /* XCLocalSwiftPackageReference "../../Packages/VPassCore" */,
+			);
 			productRefGroup = 2A0000010000000000000303 /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
@@ -161,18 +154,20 @@
 			files = (
 				2A0000010000000000000001 /* VPassTOTPViewerApp.swift in Sources */,
 				2A0000010000000000000002 /* ContentView.swift in Sources */,
-				2A0000010000000000000003 /* SyncedTOTPRecord.swift in Sources */,
-				2A0000010000000000000007 /* CredentialRecord.swift in Sources */,
-				2A0000010000000000000004 /* TOTPGenerator.swift in Sources */,
-				2A0000010000000000000005 /* TOTPKeychainReader.swift in Sources */,
 				2A0000010000000000000008 /* VaultKeychainStore.swift in Sources */,
-				2A0000010000000000000009 /* OTPAuthParser.swift in Sources */,
 				2A0000010000000000000011 /* AppAuthenticator.swift in Sources */,
 				2A0000010000000000000010 /* QRCodeScannerView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin XCLocalSwiftPackageReference section */
+		2A0000010000000000000901 /* XCLocalSwiftPackageReference "../../Packages/VPassCore" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = ../../Packages/VPassCore;
+		};
+/* End XCLocalSwiftPackageReference section */
 
 /* Begin XCBuildConfiguration section */
 		2A0000010000000000000804 /* Debug */ = {
@@ -382,6 +377,14 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		2A0000010000000000000902 /* VPassCore */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 2A0000010000000000000901 /* XCLocalSwiftPackageReference "../../Packages/VPassCore" */;
+			productName = VPassCore;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 2A0000010000000000000701 /* Project object */;
 }

@@ -1,6 +1,7 @@
 import CryptoKit
 import Foundation
 import Security
+import VPassCore
 
 enum BackupError: LocalizedError {
     case emptyPassword

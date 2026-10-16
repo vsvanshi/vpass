@@ -1,11 +1,11 @@
 import CryptoKit
 import Foundation
 
-enum TOTPError: LocalizedError {
+public enum TOTPError: LocalizedError {
     case invalidSecret
     case unsupportedDigits
 
-    var errorDescription: String? {
+    public var errorDescription: String? {
         switch self {
         case .invalidSecret:
             return "The TOTP secret is not valid Base32."
@@ -15,8 +15,8 @@ enum TOTPError: LocalizedError {
     }
 }
 
-struct TOTPGenerator {
-    static func code(
+public struct TOTPGenerator {
+    public static func code(
         secretBase32: String,
         date: Date = Date(),
         period: Int = 30,
@@ -44,17 +44,17 @@ struct TOTPGenerator {
         return String(format: "%0*u", digits, value)
     }
 
-    static func remainingSeconds(date: Date = Date(), period: Int = 30) -> Int {
+    public static func remainingSeconds(date: Date = Date(), period: Int = 30) -> Int {
         let safePeriod = max(period, 1)
         let elapsed = Int(date.timeIntervalSince1970) % safePeriod
         return safePeriod - elapsed
     }
 }
 
-enum Base32 {
+public enum Base32 {
     private static let alphabet = Array("ABCDEFGHIJKLMNOPQRSTUVWXYZ234567")
 
-    static func decode(_ input: String) -> Data? {
+    public static func decode(_ input: String) -> Data? {
         let cleaned = input
             .uppercased()
             .filter { !$0.isWhitespace && $0 != "=" && $0 != "-" }

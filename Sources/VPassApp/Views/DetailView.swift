@@ -1,4 +1,5 @@
 import SwiftUI
+import VPassCore
 
 struct DetailView: View {
     @EnvironmentObject private var viewModel: VaultViewModel

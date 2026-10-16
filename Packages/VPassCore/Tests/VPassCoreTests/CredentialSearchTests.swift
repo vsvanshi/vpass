@@ -1,5 +1,5 @@
 import XCTest
-@testable import VPassApp
+import VPassCore
 
 final class CredentialSearchTests: XCTestCase {
     func testSearchMatchesWordsInAnyOrder() {

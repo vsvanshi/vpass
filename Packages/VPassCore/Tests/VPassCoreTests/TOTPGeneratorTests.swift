@@ -1,6 +1,6 @@
 import Foundation
 import XCTest
-@testable import VPassApp
+import VPassCore
 
 final class TOTPGeneratorTests: XCTestCase {
     func testRFC6238Vector() throws {

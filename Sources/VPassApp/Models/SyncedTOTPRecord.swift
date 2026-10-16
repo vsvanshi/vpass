@@ -1,4 +1,5 @@
 import Foundation
+import VPassCore
 
 struct SyncedTOTPRecord: Identifiable, Codable, Equatable, Sendable {
     var id: UUID
@@ -28,11 +29,5 @@ struct SyncedTOTPRecord: Identifiable, Codable, Equatable, Sendable {
         period = max(record.totpPeriod, 1)
         digits = max(record.totpDigits, 1)
         updatedAt = record.updatedAt
-    }
-}
-
-extension CredentialRecord {
-    var hasTOTP: Bool {
-        !totpSecretBase32.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
 }

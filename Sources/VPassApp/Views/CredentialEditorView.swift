@@ -1,4 +1,5 @@
 import SwiftUI
+import VPassCore
 
 struct CredentialEditorView: View {
     @State private var draft: CredentialDraft

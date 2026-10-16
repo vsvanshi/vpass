@@ -1,5 +1,6 @@
 import Foundation
 import Security
+import VPassCore
 
 enum VaultError: LocalizedError {
     case keychain(OSStatus)

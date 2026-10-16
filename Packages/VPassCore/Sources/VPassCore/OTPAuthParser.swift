@@ -1,19 +1,19 @@
 import Foundation
 
-struct OTPAuthConfig: Equatable {
-    var secret: String
-    var issuer: String
-    var account: String
-    var period: Int
-    var digits: Int
+public struct OTPAuthConfig: Equatable, Sendable {
+    public var secret: String
+    public var issuer: String
+    public var account: String
+    public var period: Int
+    public var digits: Int
 }
 
-enum OTPAuthParserError: LocalizedError {
+public enum OTPAuthParserError: LocalizedError {
     case unsupportedURL
     case missingSecret
     case invalidSecret
 
-    var errorDescription: String? {
+    public var errorDescription: String? {
         switch self {
         case .unsupportedURL:
             return "That QR code is not a supported otpauth://totp URL."
@@ -25,8 +25,8 @@ enum OTPAuthParserError: LocalizedError {
     }
 }
 
-struct OTPAuthParser {
-    static func parse(_ payload: String) throws -> OTPAuthConfig {
+public struct OTPAuthParser {
+    public static func parse(_ payload: String) throws -> OTPAuthConfig {
         guard let components = URLComponents(string: payload),
               components.scheme == "otpauth",
               components.host == "totp" else {

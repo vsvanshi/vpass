@@ -1,5 +1,6 @@
 import SwiftUI
 import UniformTypeIdentifiers
+import VPassCore
 
 @MainActor
 final class VaultListViewModel: ObservableObject {
@@ -32,7 +33,7 @@ final class VaultListViewModel: ObservableObject {
     var filteredRecords: [CredentialRecord] {
         records
             .filter { $0.tag == selectedTag }
-            .filter { $0.matches(searchText) }
+            .filter { $0.matchesSearch(searchText) }
     }
 
     func count(for tag: String) -> Int {

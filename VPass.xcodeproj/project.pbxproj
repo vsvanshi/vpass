@@ -11,10 +11,7 @@
 		1A0000010000000000000002 /* Sources/VPassApp/Views/ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A0000010000000000000102 /* Sources/VPassApp/Views/ContentView.swift */; };
 		1A0000010000000000000003 /* Sources/VPassApp/Views/DetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A0000010000000000000103 /* Sources/VPassApp/Views/DetailView.swift */; };
 		1A0000010000000000000004 /* Sources/VPassApp/Views/CredentialEditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A0000010000000000000104 /* Sources/VPassApp/Views/CredentialEditorView.swift */; };
-		1A0000010000000000000005 /* Sources/VPassApp/Models/CredentialRecord.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A0000010000000000000105 /* Sources/VPassApp/Models/CredentialRecord.swift */; };
 		1A0000010000000000000006 /* Sources/VPassApp/Services/KeychainVault.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A0000010000000000000106 /* Sources/VPassApp/Services/KeychainVault.swift */; };
-		1A0000010000000000000007 /* Sources/VPassApp/Services/TOTPGenerator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A0000010000000000000107 /* Sources/VPassApp/Services/TOTPGenerator.swift */; };
-		1A0000010000000000000008 /* Sources/VPassApp/Services/OTPAuthParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A0000010000000000000108 /* Sources/VPassApp/Services/OTPAuthParser.swift */; };
 		1A0000010000000000000009 /* Sources/VPassApp/Services/QRCodeScanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A0000010000000000000109 /* Sources/VPassApp/Services/QRCodeScanner.swift */; };
 		1A0000010000000000000010 /* Sources/VPassApp/ViewModels/VaultViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A0000010000000000000110 /* Sources/VPassApp/ViewModels/VaultViewModel.swift */; };
 		1A0000010000000000000011 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 1A0000010000000000000114 /* Assets.xcassets */; };
@@ -27,6 +24,7 @@
 		1A0000010000000000000018 /* Sources/VPassApp/Services/TOTPKeychainSyncStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A0000010000000000000120 /* Sources/VPassApp/Services/TOTPKeychainSyncStore.swift */; };
 		1A0000010000000000000019 /* Sources/VPassApp/Services/AppAuthenticator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A0000010000000000000121 /* Sources/VPassApp/Services/AppAuthenticator.swift */; };
 		1A0000010000000000000020 /* Sources/VPassApp/Services/DayClock.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A0000010000000000000122 /* Sources/VPassApp/Services/DayClock.swift */; };
+		1A0000010000000000000021 /* VPassCore in Frameworks */ = {isa = PBXBuildFile; productRef = 1A0000010000000000000904 /* VPassCore */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -34,10 +32,7 @@
 		1A0000010000000000000102 /* Sources/VPassApp/Views/ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/VPassApp/Views/ContentView.swift; sourceTree = "<group>"; };
 		1A0000010000000000000103 /* Sources/VPassApp/Views/DetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/VPassApp/Views/DetailView.swift; sourceTree = "<group>"; };
 		1A0000010000000000000104 /* Sources/VPassApp/Views/CredentialEditorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/VPassApp/Views/CredentialEditorView.swift; sourceTree = "<group>"; };
-		1A0000010000000000000105 /* Sources/VPassApp/Models/CredentialRecord.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/VPassApp/Models/CredentialRecord.swift; sourceTree = "<group>"; };
 		1A0000010000000000000106 /* Sources/VPassApp/Services/KeychainVault.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/VPassApp/Services/KeychainVault.swift; sourceTree = "<group>"; };
-		1A0000010000000000000107 /* Sources/VPassApp/Services/TOTPGenerator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/VPassApp/Services/TOTPGenerator.swift; sourceTree = "<group>"; };
-		1A0000010000000000000108 /* Sources/VPassApp/Services/OTPAuthParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/VPassApp/Services/OTPAuthParser.swift; sourceTree = "<group>"; };
 		1A0000010000000000000109 /* Sources/VPassApp/Services/QRCodeScanner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/VPassApp/Services/QRCodeScanner.swift; sourceTree = "<group>"; };
 		1A0000010000000000000110 /* Sources/VPassApp/ViewModels/VaultViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/VPassApp/ViewModels/VaultViewModel.swift; sourceTree = "<group>"; };
 		1A0000010000000000000111 /* AppStore/Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = AppStore/Info.plist; sourceTree = "<group>"; };
@@ -59,6 +54,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				1A0000010000000000000021 /* VPassCore in Frameworks */,
 				1A0000010000000000000014 /* Sparkle in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -85,11 +81,8 @@
 				1A0000010000000000000104 /* Sources/VPassApp/Views/CredentialEditorView.swift */,
 				1A0000010000000000000115 /* Sources/VPassApp/Views/QuickSearchView.swift */,
 				1A0000010000000000000110 /* Sources/VPassApp/ViewModels/VaultViewModel.swift */,
-				1A0000010000000000000105 /* Sources/VPassApp/Models/CredentialRecord.swift */,
 				1A0000010000000000000119 /* Sources/VPassApp/Models/SyncedTOTPRecord.swift */,
 				1A0000010000000000000106 /* Sources/VPassApp/Services/KeychainVault.swift */,
-				1A0000010000000000000107 /* Sources/VPassApp/Services/TOTPGenerator.swift */,
-				1A0000010000000000000108 /* Sources/VPassApp/Services/OTPAuthParser.swift */,
 				1A0000010000000000000109 /* Sources/VPassApp/Services/QRCodeScanner.swift */,
 				1A0000010000000000000116 /* Sources/VPassApp/Services/AppUpdater.swift */,
 				1A0000010000000000000117 /* Sources/VPassApp/Services/BackupService.swift */,
@@ -135,6 +128,7 @@
 			);
 			name = VPass;
 			packageProductDependencies = (
+				1A0000010000000000000904 /* VPassCore */,
 				1A0000010000000000000902 /* Sparkle */,
 			);
 			productName = VPass;
@@ -166,6 +160,7 @@
 			);
 			mainGroup = 1A0000010000000000000301;
 			packageReferences = (
+				1A0000010000000000000903 /* XCLocalSwiftPackageReference "Packages/VPassCore" */,
 				1A0000010000000000000901 /* XCRemoteSwiftPackageReference "Sparkle" */,
 			);
 			productRefGroup = 1A0000010000000000000304 /* Products */;
@@ -199,11 +194,8 @@
 				1A0000010000000000000004 /* Sources/VPassApp/Views/CredentialEditorView.swift in Sources */,
 				1A0000010000000000000012 /* Sources/VPassApp/Views/QuickSearchView.swift in Sources */,
 				1A0000010000000000000010 /* Sources/VPassApp/ViewModels/VaultViewModel.swift in Sources */,
-				1A0000010000000000000005 /* Sources/VPassApp/Models/CredentialRecord.swift in Sources */,
 				1A0000010000000000000017 /* Sources/VPassApp/Models/SyncedTOTPRecord.swift in Sources */,
 				1A0000010000000000000006 /* Sources/VPassApp/Services/KeychainVault.swift in Sources */,
-				1A0000010000000000000007 /* Sources/VPassApp/Services/TOTPGenerator.swift in Sources */,
-				1A0000010000000000000008 /* Sources/VPassApp/Services/OTPAuthParser.swift in Sources */,
 				1A0000010000000000000009 /* Sources/VPassApp/Services/QRCodeScanner.swift in Sources */,
 				1A0000010000000000000013 /* Sources/VPassApp/Services/AppUpdater.swift in Sources */,
 				1A0000010000000000000015 /* Sources/VPassApp/Services/BackupService.swift in Sources */,
@@ -215,6 +207,13 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin XCLocalSwiftPackageReference section */
+		1A0000010000000000000903 /* XCLocalSwiftPackageReference "Packages/VPassCore" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = Packages/VPassCore;
+		};
+/* End XCLocalSwiftPackageReference section */
 
 /* Begin XCRemoteSwiftPackageReference section */
 		1A0000010000000000000901 /* XCRemoteSwiftPackageReference "Sparkle" */ = {
@@ -232,6 +231,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 1A0000010000000000000901 /* XCRemoteSwiftPackageReference "Sparkle" */;
 			productName = Sparkle;
+		};
+		1A0000010000000000000904 /* VPassCore */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 1A0000010000000000000903 /* XCLocalSwiftPackageReference "Packages/VPassCore" */;
+			productName = VPassCore;
 		};
 /* End XCSwiftPackageProductDependency section */
 

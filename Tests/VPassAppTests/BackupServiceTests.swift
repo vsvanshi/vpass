@@ -1,6 +1,7 @@
 import Foundation
 import XCTest
 @testable import VPassApp
+import VPassCore
 
 final class BackupServiceTests: XCTestCase {
     func testEncryptedBackupRoundTrip() throws {

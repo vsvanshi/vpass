@@ -1,5 +1,6 @@
 import Foundation
 import Security
+import VPassCore
 
 enum TOTPKeychainSyncError: LocalizedError {
     case encodingFailed

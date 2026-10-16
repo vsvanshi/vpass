@@ -64,12 +64,22 @@ cd /Users/varun1/VPass
 swift run VPass
 ```
 
+## Shared Code
+
+`Packages/VPassCore` is a local Swift package used by both the macOS app and the iOS app. It holds the vault record model (`CredentialRecord`, `CustomField`, `VaultTag`, `CredentialDraft`), search, TOTP code generation, and `otpauth://` parsing. Change these types there, not in either app, so both apps keep reading the same synced records.
+
 ## Test And Build
 
-Run tests:
+Run the macOS app tests:
 
 ```sh
 swift test
+```
+
+Run the shared package tests:
+
+```sh
+swift test --package-path Packages/VPassCore
 ```
 
 Build without signing for local verification:

@@ -1,4 +1,5 @@
 import SwiftUI
+import VPassCore
 
 struct ContentView: View {
     @EnvironmentObject private var viewModel: VaultViewModel

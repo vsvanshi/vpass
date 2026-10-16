@@ -1,4 +1,5 @@
 import SwiftUI
+import VPassCore
 
 struct QuickSearchView: View {
     @EnvironmentObject private var viewModel: VaultViewModel

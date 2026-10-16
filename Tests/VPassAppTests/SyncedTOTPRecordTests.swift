@@ -1,6 +1,7 @@
 import Foundation
 import XCTest
 @testable import VPassApp
+import VPassCore
 
 final class SyncedTOTPRecordTests: XCTestCase {
     func testSyncedRecordContainsOnlyTOTPViewerFields() throws {

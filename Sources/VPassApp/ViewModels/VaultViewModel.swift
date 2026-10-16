@@ -1,6 +1,7 @@
 import AppKit
 import Foundation
 import UniformTypeIdentifiers
+import VPassCore
 
 @MainActor
 final class VaultViewModel: ObservableObject {
