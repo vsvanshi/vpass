@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>com.apple.developer.authentication-services.autofill-credential-provider</key>
+	<true/>
+	<key>keychain-access-groups</key>
+	<array>
+		<string>$(AppIdentifierPrefix)com.varunsuryawanshi.vpass.shared</string>
+		<!-- The simulator build of the app saves without an explicit access group,
+		     so its items land in the app's own group; listing it here lets the
+		     extension read them in the simulator too. -->
+		<string>$(AppIdentifierPrefix)com.varunsuryawanshi.vpass.viewer</string>
+	</array>
+</dict>
+</plist>

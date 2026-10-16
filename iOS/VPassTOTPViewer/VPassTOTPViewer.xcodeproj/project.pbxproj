@@ -16,7 +16,39 @@
 		2A0000010000000000000012 /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 2A0000010000000000000114 /* LaunchScreen.storyboard */; };
 		2A0000010000000000000013 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 2A0000010000000000000115 /* PrivacyInfo.xcprivacy */; };
 		2A0000010000000000000014 /* VPassCore in Frameworks */ = {isa = PBXBuildFile; productRef = 2A0000010000000000000902 /* VPassCore */; };
+		2A0000010000000000000015 /* CredentialIdentitySync.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2B0000010000000000000105 /* CredentialIdentitySync.swift */; };
+		2B0000010000000000000001 /* CredentialProviderViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2B0000010000000000000101 /* CredentialProviderViewController.swift */; };
+		2B0000010000000000000002 /* AutoFillViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2B0000010000000000000102 /* AutoFillViews.swift */; };
+		2B0000010000000000000003 /* VaultKeychainStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2A0000010000000000000110 /* VaultKeychainStore.swift */; };
+		2B0000010000000000000004 /* AppAuthenticator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2A0000010000000000000113 /* AppAuthenticator.swift */; };
+		2B0000010000000000000005 /* CredentialIdentitySync.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2B0000010000000000000105 /* CredentialIdentitySync.swift */; };
+		2B0000010000000000000006 /* VPassCore in Frameworks */ = {isa = PBXBuildFile; productRef = 2B0000010000000000000902 /* VPassCore */; };
+		2B0000010000000000000007 /* VPassAutoFill.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 2B0000010000000000000108 /* VPassAutoFill.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 /* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		2B0000010000000000000403 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 2A0000010000000000000701 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 2B0000010000000000000401;
+			remoteInfo = VPassAutoFill;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		2A0000010000000000000202 /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				2B0000010000000000000007 /* VPassAutoFill.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
 		2A0000010000000000000101 /* VPassTOTPViewerApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VPassTOTPViewerApp.swift; sourceTree = "<group>"; };
@@ -29,6 +61,12 @@
 		2A0000010000000000000113 /* AppAuthenticator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Services/AppAuthenticator.swift; sourceTree = "<group>"; };
 		2A0000010000000000000114 /* LaunchScreen.storyboard */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; path = LaunchScreen.storyboard; sourceTree = "<group>"; };
 		2A0000010000000000000115 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
+		2B0000010000000000000101 /* CredentialProviderViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CredentialProviderViewController.swift; sourceTree = "<group>"; };
+		2B0000010000000000000102 /* AutoFillViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AutoFillViews.swift; sourceTree = "<group>"; };
+		2B0000010000000000000103 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		2B0000010000000000000104 /* VPassAutoFill.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = VPassAutoFill.entitlements; sourceTree = "<group>"; };
+		2B0000010000000000000105 /* CredentialIdentitySync.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Services/CredentialIdentitySync.swift; sourceTree = "<group>"; };
+		2B0000010000000000000108 /* VPassAutoFill.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = VPassAutoFill.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -40,6 +78,14 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		2B0000010000000000000201 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				2B0000010000000000000006 /* VPassCore in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
@@ -47,6 +93,7 @@
 			isa = PBXGroup;
 			children = (
 				2A0000010000000000000302 /* VPassTOTPViewer */,
+				2B0000010000000000000302 /* VPassAutoFill */,
 				2A0000010000000000000303 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -57,6 +104,7 @@
 				2A0000010000000000000101 /* VPassTOTPViewerApp.swift */,
 				2A0000010000000000000102 /* ContentView.swift */,
 				2A0000010000000000000110 /* VaultKeychainStore.swift */,
+				2B0000010000000000000105 /* CredentialIdentitySync.swift */,
 				2A0000010000000000000113 /* AppAuthenticator.swift */,
 				2A0000010000000000000112 /* QRCodeScannerView.swift */,
 				2A0000010000000000000106 /* Assets.xcassets */,
@@ -71,8 +119,20 @@
 			isa = PBXGroup;
 			children = (
 				2A0000010000000000000108 /* VPassTOTPViewer.app */,
+				2B0000010000000000000108 /* VPassAutoFill.appex */,
 			);
 			name = Products;
+			sourceTree = "<group>";
+		};
+		2B0000010000000000000302 /* VPassAutoFill */ = {
+			isa = PBXGroup;
+			children = (
+				2B0000010000000000000101 /* CredentialProviderViewController.swift */,
+				2B0000010000000000000102 /* AutoFillViews.swift */,
+				2B0000010000000000000103 /* Info.plist */,
+				2B0000010000000000000104 /* VPassAutoFill.entitlements */,
+			);
+			path = VPassAutoFill;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -85,10 +145,12 @@
 				2A0000010000000000000201 /* Frameworks */,
 				2A0000010000000000000501 /* Sources */,
 				2A0000010000000000000601 /* Resources */,
+				2A0000010000000000000202 /* Embed Foundation Extensions */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				2B0000010000000000000402 /* PBXTargetDependency */,
 			);
 			packageProductDependencies = (
 				2A0000010000000000000902 /* VPassCore */,
@@ -97,6 +159,26 @@
 			productName = VPassTOTPViewer;
 			productReference = 2A0000010000000000000108 /* VPassTOTPViewer.app */;
 			productType = "com.apple.product-type.application";
+		};
+		2B0000010000000000000401 /* VPassAutoFill */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 2B0000010000000000000803 /* Build configuration list for PBXNativeTarget "VPassAutoFill" */;
+			buildPhases = (
+				2B0000010000000000000501 /* Sources */,
+				2B0000010000000000000201 /* Frameworks */,
+				2B0000010000000000000601 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = VPassAutoFill;
+			packageProductDependencies = (
+				2B0000010000000000000902 /* VPassCore */,
+			);
+			productName = VPassAutoFill;
+			productReference = 2B0000010000000000000108 /* VPassAutoFill.appex */;
+			productType = "com.apple.product-type.app-extension";
 		};
 /* End PBXNativeTarget section */
 
@@ -109,6 +191,9 @@
 				LastUpgradeCheck = 2650;
 				TargetAttributes = {
 					2A0000010000000000000401 = {
+						CreatedOnToolsVersion = 26.5;
+					};
+					2B0000010000000000000401 = {
 						CreatedOnToolsVersion = 26.5;
 					};
 				};
@@ -130,6 +215,7 @@
 			projectRoot = "";
 			targets = (
 				2A0000010000000000000401 /* VPassTOTPViewer */,
+				2B0000010000000000000401 /* VPassAutoFill */,
 			);
 		};
 /* End PBXProject section */
@@ -145,6 +231,13 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		2B0000010000000000000601 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
@@ -155,12 +248,33 @@
 				2A0000010000000000000001 /* VPassTOTPViewerApp.swift in Sources */,
 				2A0000010000000000000002 /* ContentView.swift in Sources */,
 				2A0000010000000000000008 /* VaultKeychainStore.swift in Sources */,
+				2A0000010000000000000015 /* CredentialIdentitySync.swift in Sources */,
 				2A0000010000000000000011 /* AppAuthenticator.swift in Sources */,
 				2A0000010000000000000010 /* QRCodeScannerView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		2B0000010000000000000501 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				2B0000010000000000000001 /* CredentialProviderViewController.swift in Sources */,
+				2B0000010000000000000002 /* AutoFillViews.swift in Sources */,
+				2B0000010000000000000003 /* VaultKeychainStore.swift in Sources */,
+				2B0000010000000000000004 /* AppAuthenticator.swift in Sources */,
+				2B0000010000000000000005 /* CredentialIdentitySync.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		2B0000010000000000000402 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 2B0000010000000000000401 /* VPassAutoFill */;
+			targetProxy = 2B0000010000000000000403 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
 
 /* Begin XCLocalSwiftPackageReference section */
 		2A0000010000000000000901 /* XCLocalSwiftPackageReference "../../Packages/VPassCore" */ = {
@@ -293,7 +407,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = VPassTOTPViewer/VPassTOTPViewer.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 4;
+				CURRENT_PROJECT_VERSION = 5;
 				DEVELOPMENT_ASSET_PATHS = "";
 				DEVELOPMENT_TEAM = X937FCYW2Y;
 				ENABLE_PREVIEWS = YES;
@@ -309,7 +423,7 @@
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
-				MARKETING_VERSION = 1.0.1;
+				MARKETING_VERSION = 1.1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.varunsuryawanshi.vpass.viewer;
 				PRODUCT_NAME = VPass;
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
@@ -327,7 +441,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = VPassTOTPViewer/VPassTOTPViewer.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 4;
+				CURRENT_PROJECT_VERSION = 5;
 				DEVELOPMENT_ASSET_PATHS = "";
 				DEVELOPMENT_TEAM = X937FCYW2Y;
 				ENABLE_PREVIEWS = YES;
@@ -343,12 +457,72 @@
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
-				MARKETING_VERSION = 1.0.1;
+				MARKETING_VERSION = 1.1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.varunsuryawanshi.vpass.viewer;
 				PRODUCT_NAME = VPass;
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
 				SUPPORTS_MACCATALYST = NO;
 				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		2B0000010000000000000806 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = VPassAutoFill/VPassAutoFill.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 5;
+				DEVELOPMENT_TEAM = X937FCYW2Y;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = VPassAutoFill/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = VPass;
+				INFOPLIST_KEY_NSFaceIDUsageDescription = "VPass uses Face ID before it fills your logins and verification codes.";
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.varunsuryawanshi.vpass.viewer.autofill;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		2B0000010000000000000807 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = VPassAutoFill/VPassAutoFill.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 5;
+				DEVELOPMENT_TEAM = X937FCYW2Y;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = VPassAutoFill/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = VPass;
+				INFOPLIST_KEY_NSFaceIDUsageDescription = "VPass uses Face ID before it fills your logins and verification codes.";
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.varunsuryawanshi.vpass.viewer.autofill;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
@@ -376,10 +550,24 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
+		2B0000010000000000000803 /* Build configuration list for PBXNativeTarget "VPassAutoFill" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				2B0000010000000000000806 /* Debug */,
+				2B0000010000000000000807 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
 /* End XCConfigurationList section */
 
 /* Begin XCSwiftPackageProductDependency section */
 		2A0000010000000000000902 /* VPassCore */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 2A0000010000000000000901 /* XCLocalSwiftPackageReference "../../Packages/VPassCore" */;
+			productName = VPassCore;
+		};
+		2B0000010000000000000902 /* VPassCore */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = 2A0000010000000000000901 /* XCLocalSwiftPackageReference "../../Packages/VPassCore" */;
 			productName = VPassCore;

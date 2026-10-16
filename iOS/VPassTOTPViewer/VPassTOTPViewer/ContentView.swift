@@ -58,6 +58,8 @@ final class VaultListViewModel: ObservableObject {
             records = try store.loadRecords()
             errorMessage = nil
             lastLoadedAt = Date()
+            let snapshot = records
+            Task { await CredentialIdentitySync.update(with: snapshot) }
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -310,6 +312,11 @@ private struct HelpView: View {
                         icon: "lock.rotation",
                         title: "Add 2FA codes",
                         text: "Open a credential, tap Edit, then “Scan QR Code” in the Authenticator section to add a time-based (TOTP) code — or type the secret in manually."
+                    )
+                    HelpRow(
+                        icon: "key.viewfinder",
+                        title: "Fill logins in apps and websites",
+                        text: "Turn on VPass in Settings > General > AutoFill & Passwords. Then tap a login field and choose VPass above the keyboard. VPass asks for Face ID before it fills anything."
                     )
                     HelpRow(
                         icon: "faceid",
