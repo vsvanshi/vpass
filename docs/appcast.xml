@@ -3,15 +3,16 @@
     <channel>
         <title>VPass</title>
         <item>
-            <title>1.0.3</title>
-            <pubDate>Sun, 02 Aug 2026 12:31:51 +0530</pubDate>
+            <title>1.1.0</title>
+            <pubDate>Wed, 21 Oct 2026 13:36:36 +0530</pubDate>
             <link>https://github.com/vsvanshi/vpass</link>
-            <sparkle:version>4</sparkle:version>
-            <sparkle:shortVersionString>1.0.3</sparkle:shortVersionString>
+            <sparkle:version>5</sparkle:version>
+            <sparkle:shortVersionString>1.1.0</sparkle:shortVersionString>
             <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
-            <enclosure url="https://github.com/vsvanshi/vpass/releases/download/v1.0.3/VPass-1.0.3.dmg" length="5001997" type="application/octet-stream" sparkle:edSignature="3+EC2kXK3wxvLcVkOKjJN54B4nBkp6S0l8OxPuglh//TtYStjz2LkKUr/jeKlPjzjqLJQFM3VHp8CHDhI5HOCA=="/>
+            <enclosure url="https://github.com/vsvanshi/vpass/releases/download/v1.1.0/VPass-1.1.0.dmg" length="5363361" type="application/octet-stream" sparkle:edSignature="Dio2WW43CsptEBTGOZbGsIHQvqdw+L0f7/esiQauWNQQO+EkWsg76t4Ni+BLfkYx88D4BYsNcO6DpLE6BC0rDQ=="/>
             <sparkle:deltas>
-                <enclosure url="https://github.com/vsvanshi/vpass/releases/download/v1.0.3/VPass4-3.delta" sparkle:deltaFrom="3" length="223374" type="application/octet-stream" sparkle:deltaFromSparkleExecutableSize="977840" sparkle:deltaFromSparkleLocales="de,he,ar,el,ja,fa,uk" sparkle:edSignature="59socj+Wf7JfZUE1IvP5LTDey4RyW1/lmEWE/J3MsN3w5fxWcxyc+cAiCTx9KLe0BTLEV2/0i9b2d9+htIciDQ=="/>
+                <enclosure url="https://github.com/vsvanshi/vpass/releases/download/v1.1.0/VPass5-4.delta" sparkle:deltaFrom="4" length="639474" type="application/octet-stream" sparkle:deltaFromSparkleExecutableSize="977840" sparkle:deltaFromSparkleLocales="de,he,ar,el,ja,fa,uk" sparkle:edSignature="/urhnQ8Yw0ds0CeMiZAhON2Yts8Qr4plNr3m6Qo3UGgDjvaIZeAu1Y7EK6SRYIzvwa561+/5ya+rCbEa6xRDDg=="/>
+                <enclosure url="https://github.com/vsvanshi/vpass/releases/download/v1.1.0/VPass5-3.delta" sparkle:deltaFrom="3" length="677394" type="application/octet-stream" sparkle:deltaFromSparkleExecutableSize="977840" sparkle:deltaFromSparkleLocales="de,he,ar,el,ja,fa,uk" sparkle:edSignature="qGe2Egb3O2erxYMfXVLO1tIUfuJK76FIHGhnOY9ATX49HBb1YpRieFA9uPA4FutejVsjacLtT/IgHrYB2TtGCw=="/>
             </sparkle:deltas>
         </item>
     </channel>
