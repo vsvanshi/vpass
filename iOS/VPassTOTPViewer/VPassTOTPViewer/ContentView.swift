@@ -524,6 +524,7 @@ private struct TagChip: View {
             HStack(spacing: 6) {
                 Image(systemName: tag.systemImage)
                     .font(.caption.weight(.semibold))
+                    .foregroundStyle(isSelected ? Color.white : tag.accent)
 
                 Text(tag.name)
                     .font(.subheadline.weight(.medium))
@@ -540,7 +541,7 @@ private struct TagChip: View {
             .padding(.horizontal, 13)
             .padding(.vertical, 8)
             .background {
-                Capsule().fill(isSelected ? Color.brandBackground : Color.secondary.opacity(0.12))
+                Capsule().fill(isSelected ? tag.accent : Color.secondary.opacity(0.12))
             }
             .overlay {
                 Capsule().strokeBorder(
@@ -549,7 +550,7 @@ private struct TagChip: View {
                 )
             }
             .foregroundStyle(isSelected ? Color.white : Color.primary)
-            .shadow(color: isSelected ? Color.brandBackground.opacity(0.3) : .clear, radius: 5, y: 2)
+            .shadow(color: isSelected ? tag.accent.opacity(0.3) : .clear, radius: 5, y: 2)
             .contentShape(Capsule())
         }
         .buttonStyle(.plain)
@@ -563,21 +564,7 @@ private struct CredentialRowView: View {
 
     var body: some View {
         HStack(spacing: 13) {
-            Image(systemName: record.hasTOTP ? "lock.rotation" : "key.fill")
-                .font(.system(size: 16, weight: .semibold))
-                .foregroundStyle(.white)
-                .frame(width: 38, height: 38)
-                .background(
-                    LinearGradient(
-                        colors: record.hasTOTP
-                            ? [Color.green, Color.green.opacity(0.65)]
-                            : [Color.brandBackground, Color.brandBackground.opacity(0.65)],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    ),
-                    in: RoundedRectangle(cornerRadius: 10, style: .continuous)
-                )
-                .shadow(color: .black.opacity(0.08), radius: 2, y: 1)
+            MonogramTile(record: record)
 
             VStack(alignment: .leading, spacing: 3) {
                 Text(record.title.isEmpty ? "Untitled" : record.title)
@@ -590,17 +577,53 @@ private struct CredentialRowView: View {
             }
 
             Spacer(minLength: 8)
-
-            if record.hasTOTP {
-                Text("TOTP")
-                    .font(.caption2.weight(.bold))
-                    .foregroundStyle(.green)
-                    .padding(.horizontal, 7)
-                    .padding(.vertical, 3)
-                    .background(Color.green.opacity(0.14), in: Capsule())
-            }
         }
         .padding(.vertical, 5)
+    }
+}
+
+/// A login's list tile: its first letter on a color derived from its website,
+/// so the same site always looks the same. A small badge marks a 2FA code.
+private struct MonogramTile: View {
+    let record: CredentialRecord
+
+    private static let palette: [Color] = [.blue, .indigo, .purple, .pink, .red, .orange, .brown, .green, .teal, .cyan]
+
+    var body: some View {
+        let color = Self.palette[record.monogramColorIndex(paletteCount: Self.palette.count)]
+        Text(record.monogram)
+            .font(.system(size: 18, weight: .bold, design: .rounded))
+            .foregroundStyle(.white)
+            .frame(width: 38, height: 38)
+            .background(
+                LinearGradient(colors: [color, color.opacity(0.7)], startPoint: .topLeading, endPoint: .bottomTrailing),
+                in: RoundedRectangle(cornerRadius: 10, style: .continuous)
+            )
+            .shadow(color: .black.opacity(0.08), radius: 2, y: 1)
+            .overlay(alignment: .bottomTrailing) {
+                if record.hasTOTP {
+                    Image(systemName: "lock.rotation")
+                        .font(.system(size: 8, weight: .bold))
+                        .foregroundStyle(.white)
+                        .frame(width: 17, height: 17)
+                        .background(Color.green, in: Circle())
+                        .overlay(Circle().strokeBorder(Color(.systemBackground), lineWidth: 2))
+                        .offset(x: 5, y: 5)
+                        .accessibilityLabel("Has 2FA code")
+                }
+            }
+    }
+}
+
+extension VaultTag {
+    /// Accent color for the tag's chip.
+    var accent: Color {
+        switch name {
+        case VaultTag.work.name: .indigo
+        case VaultTag.finance.name: .green
+        case VaultTag.servers.name: .orange
+        default: .brandBackground
+        }
     }
 }
 
@@ -724,9 +747,13 @@ private struct TOTPCodeView: View {
             let remaining = TOTPGenerator.remainingSeconds(date: context.date, period: record.totpPeriod)
             let progress = Double(remaining) / Double(max(record.totpPeriod, 1))
 
-            HStack {
-                Text(code)
-                    .font(.system(.title2, design: .monospaced).weight(.semibold))
+            HStack(spacing: 12) {
+                Text(TOTPGenerator.grouped(code))
+                    .font(.system(size: 32, weight: .semibold, design: .monospaced))
+                    .contentTransition(.numericText())
+                    .animation(.snappy, value: code)
+                    .minimumScaleFactor(0.6)
+                    .lineLimit(1)
                 CircularCountdown(progress: progress, remaining: remaining)
                 Spacer()
                 CopyButton(text: code, label: "TOTP", concealed: true, copiedValue: $copiedValue)
@@ -963,6 +990,7 @@ private struct CopyButton: View {
     let label: String
     var concealed = false
     @Binding var copiedValue: String?
+    @State private var copyCount = 0
 
     private static let clipboardClearDelaySeconds: TimeInterval = 40
 
@@ -981,6 +1009,7 @@ private struct CopyButton: View {
             } else {
                 UIPasteboard.general.string = text
             }
+            copyCount += 1
             withAnimation(.snappy(duration: 0.18)) {
                 copiedValue = label
             }
@@ -995,6 +1024,7 @@ private struct CopyButton: View {
             Image(systemName: "doc.on.doc")
         }
         .disabled(text.isEmpty)
+        .sensoryFeedback(.success, trigger: copyCount)
     }
 }
 
@@ -1002,18 +1032,28 @@ private struct CircularCountdown: View {
     let progress: Double
     let remaining: Int
 
+    /// Orange in the last 10 seconds, red in the last 5, so a code about to
+    /// expire isn't copied.
+    private var tint: Color {
+        if remaining <= 5 {
+            return .red
+        }
+        return remaining <= 10 ? .orange : .blue
+    }
+
     var body: some View {
         ZStack {
             Circle()
                 .stroke(.secondary.opacity(0.18), lineWidth: 3)
             Circle()
                 .trim(from: 0, to: max(0, min(progress, 1)))
-                .stroke(.blue, style: StrokeStyle(lineWidth: 3, lineCap: .round))
+                .stroke(tint, style: StrokeStyle(lineWidth: 3, lineCap: .round))
                 .rotationEffect(.degrees(-90))
             Text("\(remaining)")
                 .font(.caption2.monospacedDigit())
-                .foregroundStyle(.secondary)
+                .foregroundStyle(remaining <= 5 ? tint : .secondary)
         }
         .frame(width: 28, height: 28)
+        .animation(.easeInOut(duration: 0.3), value: remaining <= 5)
     }
 }
