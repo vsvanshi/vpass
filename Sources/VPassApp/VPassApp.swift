@@ -1,4 +1,5 @@
 import AppKit
+import Carbon.HIToolbox
 import SwiftUI
 
 @main
@@ -11,6 +12,7 @@ struct VPassApp: App {
     init() {
         let viewModel = VaultViewModel(vault: KeychainVault())
         _viewModel = StateObject(wrappedValue: viewModel)
+        QuickSearchPanel.shared.configure(viewModel: viewModel)
         _authenticator = StateObject(wrappedValue: AppAuthenticator.shared)
         _updater = StateObject(wrappedValue: AppUpdater())
     }
@@ -46,9 +48,15 @@ struct VPassApp: App {
 final class VPassAppDelegate: NSObject, NSApplicationDelegate {
     private var allowsQuit = false
     private var quitKeyMonitor: Any?
+    private var searchHotKey: GlobalHotKey?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApplication.shared.setActivationPolicy(.regular)
+        // Ctrl+Option+V opens the menu bar quick search from any app.
+        MenuBarPanel.startTrackingFrontmostApp()
+        searchHotKey = GlobalHotKey(keyCode: kVK_ANSI_V, modifiers: controlKey | optionKey) {
+            QuickSearchPanel.shared.toggle()
+        }
         quitKeyMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { event in
             guard event.isVPassQuitShortcut else {
                 return event

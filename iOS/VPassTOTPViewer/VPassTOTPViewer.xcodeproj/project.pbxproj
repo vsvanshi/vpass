@@ -16,12 +16,10 @@
 		2A0000010000000000000012 /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 2A0000010000000000000114 /* LaunchScreen.storyboard */; };
 		2A0000010000000000000013 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 2A0000010000000000000115 /* PrivacyInfo.xcprivacy */; };
 		2A0000010000000000000014 /* VPassCore in Frameworks */ = {isa = PBXBuildFile; productRef = 2A0000010000000000000902 /* VPassCore */; };
-		2A0000010000000000000015 /* CredentialIdentitySync.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2B0000010000000000000105 /* CredentialIdentitySync.swift */; };
 		2B0000010000000000000001 /* CredentialProviderViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2B0000010000000000000101 /* CredentialProviderViewController.swift */; };
 		2B0000010000000000000002 /* AutoFillViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2B0000010000000000000102 /* AutoFillViews.swift */; };
 		2B0000010000000000000003 /* VaultKeychainStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2A0000010000000000000110 /* VaultKeychainStore.swift */; };
 		2B0000010000000000000004 /* AppAuthenticator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2A0000010000000000000113 /* AppAuthenticator.swift */; };
-		2B0000010000000000000005 /* CredentialIdentitySync.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2B0000010000000000000105 /* CredentialIdentitySync.swift */; };
 		2B0000010000000000000006 /* VPassCore in Frameworks */ = {isa = PBXBuildFile; productRef = 2B0000010000000000000902 /* VPassCore */; };
 		2B0000010000000000000007 /* VPassAutoFill.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 2B0000010000000000000108 /* VPassAutoFill.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 /* End PBXBuildFile section */
@@ -65,7 +63,6 @@
 		2B0000010000000000000102 /* AutoFillViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AutoFillViews.swift; sourceTree = "<group>"; };
 		2B0000010000000000000103 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		2B0000010000000000000104 /* VPassAutoFill.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = VPassAutoFill.entitlements; sourceTree = "<group>"; };
-		2B0000010000000000000105 /* CredentialIdentitySync.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Services/CredentialIdentitySync.swift; sourceTree = "<group>"; };
 		2B0000010000000000000108 /* VPassAutoFill.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = VPassAutoFill.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
@@ -104,7 +101,6 @@
 				2A0000010000000000000101 /* VPassTOTPViewerApp.swift */,
 				2A0000010000000000000102 /* ContentView.swift */,
 				2A0000010000000000000110 /* VaultKeychainStore.swift */,
-				2B0000010000000000000105 /* CredentialIdentitySync.swift */,
 				2A0000010000000000000113 /* AppAuthenticator.swift */,
 				2A0000010000000000000112 /* QRCodeScannerView.swift */,
 				2A0000010000000000000106 /* Assets.xcassets */,
@@ -248,7 +244,6 @@
 				2A0000010000000000000001 /* VPassTOTPViewerApp.swift in Sources */,
 				2A0000010000000000000002 /* ContentView.swift in Sources */,
 				2A0000010000000000000008 /* VaultKeychainStore.swift in Sources */,
-				2A0000010000000000000015 /* CredentialIdentitySync.swift in Sources */,
 				2A0000010000000000000011 /* AppAuthenticator.swift in Sources */,
 				2A0000010000000000000010 /* QRCodeScannerView.swift in Sources */,
 			);
@@ -262,7 +257,6 @@
 				2B0000010000000000000002 /* AutoFillViews.swift in Sources */,
 				2B0000010000000000000003 /* VaultKeychainStore.swift in Sources */,
 				2B0000010000000000000004 /* AppAuthenticator.swift in Sources */,
-				2B0000010000000000000005 /* CredentialIdentitySync.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

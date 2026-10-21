@@ -142,6 +142,8 @@ final class VaultViewModel: ObservableObject {
     func reload() {
         do {
             records = try vault.loadRecords()
+            let snapshot = records
+            Task { await CredentialIdentitySync.update(with: snapshot) }
             if !VaultTag.all.contains(where: { $0.name == selectedTag }) {
                 setSelectedTag(VaultTag.personal.name, selectFirstRecord: false)
             }

@@ -7,6 +7,17 @@ struct QuickSearchView: View {
     @State private var query = ""
     @State private var copiedMessage: String?
     @State private var copiedFeedbackID = UUID()
+    @FocusState private var isSearchFocused: Bool
+    @ObservedObject private var context = QuickSearchContext.shared
+    /// True in the keyboard-shortcut window: keep the login just used on top.
+    /// The menu bar dropdown keeps the plain list;
+    /// it sizes itself to its content, and reordering it mid-click crashed
+    /// AppKit's window resize.
+    var usesShortcutContext = false
+
+    private var hasQuery: Bool {
+        !query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
 
     private var results: [CredentialRecord] {
         let term = query.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -15,12 +26,37 @@ struct QuickSearchView: View {
         }
 
         guard !term.isEmpty else {
-            return Array(records.prefix(10))
+            let base = Array(records.prefix(10))
+            // Shortcut window: the login whose password was just copied goes
+            // on top.
+            guard usesShortcutContext else {
+                return base
+            }
+            if let recent = recentRecord {
+                return [recent] + base.filter { $0.id != recent.id }
+            }
+            return base
         }
 
         return records.filter { $0.matchesSearch(term) }
             .prefix(12)
             .map { $0 }
+    }
+
+    private var recentRecord: CredentialRecord? {
+        guard usesShortcutContext, let id = context.freshRecentRecordID else {
+            return nil
+        }
+        return viewModel.records.first { $0.id == id }
+    }
+
+    /// The login Return / Shift+Return act on: the top search result, or with
+    /// an empty search, the login just used.
+    private var actionRecord: CredentialRecord? {
+        if hasQuery {
+            return results.first
+        }
+        return recentRecord
     }
 
     var body: some View {
@@ -57,9 +93,22 @@ struct QuickSearchView: View {
                     .foregroundStyle(.secondary)
                 TextField("Search passwords", text: $query)
                     .textFieldStyle(.plain)
+                    .focused($isSearchFocused)
+                    .onKeyPress(.return, phases: .down) { press in
+                        copyTopResult(code: press.modifiers.contains(.shift))
+                    }
             }
             .padding(10)
             .background(.regularMaterial)
+
+            if !hasQuery, let recentRecord {
+                Text("Continuing with \(recentRecord.title.isEmpty ? recentRecord.username : recentRecord.title)")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 6)
+            }
 
             Divider()
 
@@ -70,8 +119,13 @@ struct QuickSearchView: View {
                 ScrollView {
                     LazyVStack(spacing: 0) {
                         ForEach(results) { record in
-                            QuickCredentialRow(record: record) { label in
+                            QuickCredentialRow(record: record, isHighlighted: record.id == actionRecord?.id) { label in
                                 showCopiedFeedback(label)
+                                if label == "password" {
+                                    context.rememberPasswordCopy(of: record.id)
+                                } else if label == "TOTP" {
+                                    context.clearRecent()
+                                }
                             }
                                 .environmentObject(viewModel)
                             if record.id != results.last?.id {
@@ -85,6 +139,16 @@ struct QuickSearchView: View {
                 // beyond this the rows scroll while the search bar (above) and
                 // the action buttons (below, in MenuBarRootView) stay fixed.
                 .frame(width: 420, height: min(CGFloat(results.count) * 72, 360))
+            }
+
+            if actionRecord != nil {
+                Divider()
+                Text("Return copies password  -  Shift+Return copies 2FA code  -  Ctrl+Option+V opens this anywhere")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 6)
             }
 
             if let copiedMessage {
@@ -101,7 +165,48 @@ struct QuickSearchView: View {
         .frame(width: 420)
         .onAppear {
             viewModel.reload()
+            isSearchFocused = true
         }
+        // The panel's view stays alive between openings, so onAppear alone
+        // misses reopenings; refocus search whenever a window becomes key.
+        .onReceive(NotificationCenter.default.publisher(for: NSWindow.didBecomeKeyNotification)) { _ in
+            isSearchFocused = true
+        }
+        .onReceive(context.$openCount) { _ in
+            if usesShortcutContext, context.freshRecentRecordID != nil {
+                query = ""
+            }
+        }
+    }
+
+    /// Return / Shift+Return: copy the top result's password or 2FA code,
+    /// then close the panel and go back to the previous app for pasting.
+    private func copyTopResult(code: Bool) -> KeyPress.Result {
+        guard let record = actionRecord else {
+            return .ignored
+        }
+        if code {
+            guard record.hasTOTP,
+                  let value = try? TOTPGenerator.code(
+                    secretBase32: record.totpSecretBase32,
+                    period: record.totpPeriod,
+                    digits: record.totpDigits
+                  ) else {
+                showCopiedFeedback("nothing - no 2FA code saved for \(record.title)")
+                return .handled
+            }
+            viewModel.copyToClipboard(value, label: "TOTP", concealed: true)
+            context.clearRecent()
+        } else {
+            guard !record.password.isEmpty else {
+                showCopiedFeedback("nothing - no password saved for \(record.title)")
+                return .handled
+            }
+            viewModel.copyToClipboard(record.password, label: "password", concealed: true)
+            context.rememberPasswordCopy(of: record.id)
+        }
+        MenuBarPanel.closeAndReturnFocus()
+        return .handled
     }
 
     private func showCopiedFeedback(_ label: String) {
@@ -159,6 +264,8 @@ private struct QuickUnlockView: View {
 private struct QuickCredentialRow: View {
     @EnvironmentObject private var viewModel: VaultViewModel
     let record: CredentialRecord
+    /// The row Return / Shift+Return act on.
+    var isHighlighted = false
     let onCopy: (String) -> Void
 
     var body: some View {
@@ -202,6 +309,7 @@ private struct QuickCredentialRow: View {
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 10)
+        .background(isHighlighted ? Color.accentColor.opacity(0.12) : Color.clear)
     }
 
 }

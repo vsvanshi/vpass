@@ -373,7 +373,9 @@ final class KeychainVault {
         return query
     }
 
-    private func loadCloudRecordsWithoutMigration() throws -> [CredentialRecord] {
+    /// Reads the shared vault without migrating, purging, or writing anything.
+    /// The AutoFill extension uses this; it must never change the vault.
+    func loadCloudRecordsWithoutMigration() throws -> [CredentialRecord] {
         let deletionMarkers = try loadDeletionMarkers()
         let records = try loadSharedAccounts().compactMap { account in
             try? loadSharedRecord(account: account)

@@ -38,6 +38,7 @@ final class CredentialProviderViewController: ASCredentialProviderViewController
             mode: mode,
             serviceIdentifiers: [credentialRequest.credentialIdentity.serviceIdentifier],
             directRecordID: recordID,
+            loadRecords: { try VaultKeychainStore().loadRecords() },
             onSelect: { [weak self] record in self?.complete(with: record, mode: mode) },
             onCancel: { [weak self] error in self?.cancel(error) }
         )
@@ -60,6 +61,7 @@ final class CredentialProviderViewController: ASCredentialProviderViewController
             mode: mode,
             serviceIdentifiers: serviceIdentifiers,
             directRecordID: nil,
+            loadRecords: { try VaultKeychainStore().loadRecords() },
             onSelect: { [weak self] record in self?.complete(with: record, mode: mode) },
             onCancel: { [weak self] error in self?.cancel(error) }
         )
